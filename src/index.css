@@ -1,0 +1,107 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  
+  --color-neon-purple: #9333ea;
+  --color-neon-blue: #3b82f6;
+  --color-neon-pink: #ec4899;
+}
+
+/* Custom styling for neon and glass elements */
+body {
+  margin: 0;
+  background-color: #050508;
+  color: #f8fafc;
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+}
+
+/* Custom glow borders & shadows */
+.neon-border-purple {
+  border: 1px solid rgba(147, 51, 234, 0.3);
+  box-shadow: 0 0 15px rgba(147, 51, 234, 0.15);
+}
+
+.neon-border-blue {
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.15);
+}
+
+.neon-border-pink {
+  border: 1px solid rgba(236, 72, 153, 0.3);
+  box-shadow: 0 0 15px rgba(236, 72, 153, 0.15);
+}
+
+.neon-border-interactive {
+  transition: all 0.3s ease;
+}
+.neon-border-interactive:hover {
+  border-color: rgba(236, 72, 153, 0.6);
+  box-shadow: 0 0 20px rgba(236, 72, 153, 0.3), inset 0 0 10px rgba(236, 72, 153, 0.05);
+}
+
+.neon-glow-text-purple {
+  text-shadow: 0 0 8px rgba(147, 51, 234, 0.6), 0 0 20px rgba(147, 51, 234, 0.2);
+}
+
+.neon-glow-text-blue {
+  text-shadow: 0 0 8px rgba(59, 130, 246, 0.6), 0 0 20px rgba(59, 130, 246, 0.2);
+}
+
+.neon-glow-text-pink {
+  text-shadow: 0 0 8px rgba(236, 72, 153, 0.6), 0 0 20px rgba(236, 72, 153, 0.2);
+}
+
+/* Glass panel - updated to match white/5 translucent styling from Vibrant Palette */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.glass-panel-heavy {
+  background: rgba(255, 255, 255, 0.09);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #060309;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(138, 43, 226, 0.35);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 77, 255, 0.6);
+}
+
+/* Background Cyber Grid */
+.cyber-grid {
+  background-image: linear-gradient(rgba(138, 43, 226, 0.06) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(138, 43, 226, 0.06) 1px, transparent 1px);
+  background-size: 40px 40px;
+  background-position: center;
+}
+
+/* Custom animated gradient backgrounds */
+.radial-glow-1 {
+  background: radial-gradient(circle at 10% 20%, rgba(138, 43, 226, 0.15) 0%, transparent 40%);
+}
+
+.radial-glow-2 {
+  background: radial-gradient(circle at 80% 80%, rgba(0, 191, 255, 0.15) 0%, transparent 40%);
+}
+
+.radial-glow-3 {
+  background: radial-gradient(circle at 50% 50%, rgba(255, 77, 255, 0.1) 0%, transparent 50%);
+}

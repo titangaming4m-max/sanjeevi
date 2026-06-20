@@ -1,0 +1,1748 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  Lock, KeyRound, Save, Plus, Trash2, Check, RefreshCw, X, MessageSquare, 
+  Layers, Hammer, Cpu, Settings as SettingsIcon, AlertCircle, Sparkles, Terminal, Mail, MessageSquareText, RotateCcw, Loader2
+} from 'lucide-react';
+import { Project, Skill, Service, Message, HeroData, AboutData, Settings } from '../types';
+
+interface AdminDashboardProps {
+  onClose: () => void;
+  token: string | null;
+  onLoginSuccess: (token: string) => void;
+  portfolioData: {
+    settings: Settings;
+    hero: HeroData;
+    about: AboutData;
+    skills: Skill[];
+    services: Service[];
+    projects: Project[];
+  };
+  onRefreshData: () => void;
+}
+
+export default function AdminDashboard({
+  onClose,
+  token,
+  onLoginSuccess,
+  portfolioData,
+  onRefreshData
+}: AdminDashboardProps) {
+
+  // Auth States
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [loggingIn, setLoggingIn] = useState(false);
+
+  // Tabs
+  const [activeTab, setActiveTab] = useState<'overview' | 'hero-about' | 'projects' | 'skills-services' | 'messages' | 'chatbot' | 'settings'>('overview');
+
+  // Mutation Save states
+  const [savingState, setSavingState] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+
+  // Messages State
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [chatLogs, setChatLogs] = useState<any[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+
+  // Dynamic Item Form States
+  const [newProject, setNewProject] = useState({
+    title: '', description: '', imageUrl: '', tech: '', liveUrl: '', sourceCode: '', category: 'web'
+  });
+  const [newSkill, setNewSkill] = useState({ name: '', level: 80, category: 'frontend' });
+  const [newService, setNewService] = useState({ icon: 'Code', title: '', description: '' });
+
+  // Update Forms
+  const [heroForm, setHeroForm] = useState<HeroData>({ ...portfolioData.hero });
+  const [aboutForm, setAboutForm] = useState<AboutData>({ ...portfolioData.about });
+  const [settingsForm, setSettingsForm] = useState<Settings>({ ...portfolioData.settings });
+
+  // Hard Reset States
+  const [resetState, setResetState] = useState<'idle' | 'confirming' | 'resetting' | 'success'>('idle');
+  const [resetCountdown, setResetCountdown] = useState(5);
+
+  useEffect(() => {
+    let interval: any = null;
+    if (resetState === 'confirming') {
+      interval = setInterval(() => {
+        setResetCountdown(prev => {
+          if (prev <= 1) {
+            setResetState('idle');
+            clearInterval(interval);
+            return 5;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      setResetCountdown(5);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [resetState]);
+
+  const triggerHardReset = async () => {
+    if (resetState === 'idle') {
+      setResetState('confirming');
+      setResetCountdown(5);
+      return;
+    }
+    
+    if (resetState === 'confirming') {
+      setResetState('resetting');
+      try {
+        const response = await fetch('/api/admin/reset', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        const resData = await response.json();
+        if (response.ok && resData.success) {
+          setResetState('success');
+          if (onRefreshData) onRefreshData();
+          setTimeout(() => setResetState('idle'), 4000);
+        } else {
+          alert('Failed to execute hard reset: ' + (resData.error || 'Server error'));
+          setResetState('idle');
+        }
+      } catch (err: any) {
+        alert('Hard reset transmission failed: ' + err.message);
+        setResetState('idle');
+      }
+    }
+  };
+
+  // Sync state with portfolio data updates
+  useEffect(() => {
+    setHeroForm({ ...portfolioData.hero });
+    setAboutForm({ ...portfolioData.about });
+    setSettingsForm({ ...portfolioData.settings });
+  }, [portfolioData]);
+
+  // Load backend admin data (messages & chat telemetry) if token present
+  useEffect(() => {
+    if (token) {
+      fetchAdminData();
+    }
+  }, [token]);
+
+  const fetchAdminData = async () => {
+    if (!token) return;
+    try {
+      // Fetch contact messages
+      const msgsRes = await fetch('/api/messages', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const msgs = await msgsRes.json();
+      if (Array.isArray(msgs)) setMessages(msgs);
+
+      // Fetch chatbot interaction logs
+      setLoadingLogs(true);
+      const logsRes = await fetch('/api/chat/history', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const logs = await logsRes.json();
+      if (Array.isArray(logs)) setChatLogs(logs);
+
+    } catch (err) {
+      console.error('Error fetching admin details:', err);
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
+
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) return;
+    setLoggingIn(true);
+    setLoginError('');
+
+    try {
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        onLoginSuccess(data.token);
+      } else {
+        setLoginError(data.error || 'Authenication denied. Credentials invalid!');
+      }
+    } catch (err) {
+      setLoginError('Could not establish secure handshake with fullstack controller.');
+    } finally {
+      setLoggingIn(false);
+    }
+  };
+
+  // ---------------------------------
+  // MUTATION EVENTS
+  // ---------------------------------
+  const saveHeroContent = async () => {
+    if (!token) return;
+    setSavingState(true);
+    setSaveSuccess(null);
+    try {
+      const res = await fetch('/api/hero/update', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(heroForm)
+      });
+      if (res.ok) {
+        setSaveSuccess('hero');
+        onRefreshData();
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSavingState(false);
+    }
+  };
+
+  const saveAboutContent = async () => {
+    if (!token) return;
+    setSavingState(true);
+    setSaveSuccess(null);
+    try {
+      const res = await fetch('/api/about/update', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(aboutForm)
+      });
+      if (res.ok) {
+        setSaveSuccess('about');
+        onRefreshData();
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSavingState(false);
+    }
+  };
+
+  const saveGlobalSettings = async () => {
+    if (!token) return;
+    setSavingState(true);
+    setSaveSuccess(null);
+    try {
+      const res = await fetch('/api/settings/update', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(settingsForm)
+      });
+      if (res.ok) {
+        setSaveSuccess('settings');
+        onRefreshData();
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSavingState(false);
+    }
+  };
+
+  // Projects mutation handlers
+  const handleAddProject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newProject.title || !newProject.description) return;
+    try {
+      const res = await fetch('/api/projects', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(newProject)
+      });
+      if (res.ok) {
+        setNewProject({ title: '', description: '', imageUrl: '', tech: '', liveUrl: '', sourceCode: '', category: 'web' });
+        onRefreshData();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteProject = async (id: string) => {
+    if (!window.confirm('Delete this project irrevocably from database?')) return;
+    try {
+      const res = await fetch(`/api/projects/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) onRefreshData();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Skills Mutations
+  const handleAddSkill = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSkill.name) return;
+    try {
+      const res = await fetch('/api/skills', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(newSkill)
+      });
+      if (res.ok) {
+        setNewSkill({ name: '', level: 80, category: 'frontend' });
+        onRefreshData();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteSkill = async (id: string) => {
+    try {
+      const res = await fetch(`/api/skills/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) onRefreshData();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Services Mutations
+  const handleAddService = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newService.title || !newService.description) return;
+    try {
+      const res = await fetch('/api/services', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(newService)
+      });
+      if (res.ok) {
+        setNewService({ icon: 'Code', title: '', description: '' });
+        onRefreshData();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteService = async (id: string) => {
+    try {
+      const res = await fetch(`/api/services/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) onRefreshData();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Messages Actions
+  const handleToggleRead = async (id: string) => {
+    try {
+      const res = await fetch(`/api/messages/${id}/toggle-read`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) fetchAdminData();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleMarkReplied = async (id: string) => {
+    try {
+      const res = await fetch(`/api/messages/${id}/reply`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) fetchAdminData();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteMessage = async (id: string) => {
+    if (!window.confirm('Erase contact query from records?')) return;
+    try {
+      const res = await fetch(`/api/messages/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) fetchAdminData();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // ---------------------------------
+  // IMAGE AS BASE64 UPLOADER ASSIST
+  // ---------------------------------
+  const convertToBase64AndAssign = (e: React.ChangeEvent<HTMLInputElement>, targetField: 'avatar' | 'profile' | 'project' | 'logo' | 'banner') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      const b64 = reader.result as string;
+      if (targetField === 'avatar') {
+        setAboutForm(prev => ({ ...prev, avatarUrl: b64 }));
+      } else if (targetField === 'profile') {
+        setHeroForm(prev => ({ ...prev, profileImage: b64 }));
+      } else if (targetField === 'project') {
+        setNewProject(prev => ({ ...prev, imageUrl: b64 }));
+      } else if (targetField === 'logo') {
+        setSettingsForm(prev => ({ ...prev, logoImageUrl: b64 }));
+      } else if (targetField === 'banner') {
+        setSettingsForm(prev => ({ ...prev, bannerBgImageUrl: b64 }));
+      }
+    };
+  };
+
+  // Render Login state first if unauthorized
+  if (!token) {
+    return (
+      <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/95 backdrop-blur-3xl flex items-center justify-center p-4">
+        <div className="absolute inset-0 cyber-grid -z-10 opacity-40"></div>
+        <div className="w-full max-w-md p-8 rounded-3xl glass-panel-heavy border border-white/10 relative text-left shadow-[0_0_50px_rgba(138,43,226,0.2)]">
+          <div className="absolute top-0 left-0 w-full h-[4px] bg-gradient-to-r from-neon-purple via-neon-pink to-neon-blue"></div>
+          
+          <button onClick={onClose} className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5">
+            <X className="w-5 h-5" />
+          </button>
+
+          <div className="flex flex-col items-center text-center space-y-3 mb-8">
+            <div className="p-3 bg-neon-purple/10 border border-neon-purple/30 text-neon-purple rounded-2xl">
+              <Lock className="w-6 h-6 animate-pulse" />
+            </div>
+            <h2 className="text-2xl font-black font-display tracking-tight text-white uppercase">NEON Portfolio & Lab</h2>
+            <p className="text-xs text-slate-400 max-w-xs leading-relaxed">
+              Authenticate via standard administrator profiles to unlock live state controls.
+            </p>
+          </div>
+
+          <form onSubmit={handleLoginSubmit} className="space-y-4">
+            <div className="space-y-1">
+              <label className="text-[10px] font-mono tracking-widest uppercase text-slate-400 block">Root Identity</label>
+              <input 
+                type="email" 
+                required
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="e.g. sanjeevidaa@gmail.com"
+                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-neon-purple hover:border-white/20 outline-none text-white text-sm"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-mono tracking-widest uppercase text-slate-400 block">Access Key</label>
+              <div className="relative flex items-center">
+                <input 
+                  type="password" 
+                  required
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-neon-purple hover:border-white/20 outline-none text-white text-sm"
+                />
+                <KeyRound className="w-4 h-4 text-slate-500 absolute right-4" />
+              </div>
+            </div>
+
+            {loginError && (
+              <div className="p-3 text-xs bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl flex items-center space-x-2">
+                <AlertCircle className="w-4.5 h-4.5 text-red-500 flex-shrink-0" />
+                <span>{loginError}</span>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loggingIn || !email || !password}
+              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-neon-purple to-neon-pink text-xs font-semibold uppercase tracking-wider text-white shadow-md hover:shadow-[0_0_20px_rgba(138,43,226,0.3)] hover:scale-103 cursor-pointer transition-transform duration-100 disabled:opacity-50"
+            >
+              {loggingIn ? 'Syncing...' : 'Handshake handshake'}
+            </button>
+          </form>
+
+        </div>
+      </div>
+    );
+  }
+
+  // Authorised Main view
+  return (
+    <div className="fixed inset-0 z-50 overflow-hidden bg-slate-950/98 backdrop-blur-3xl flex flex-col pt-16">
+      
+      {/* Background grids */}
+      <div className="absolute inset-0 cyber-grid -z-10 opacity-30"></div>
+
+      {/* Header bar controls panel */}
+      <div className="fixed top-0 left-0 w-full h-16 bg-[#0E0B19]/95 border-b border-white/5 flex items-center justify-between px-4 sm:px-6 lg:px-8 z-45">
+        <div className="flex items-center space-x-2">
+          <Terminal className="w-5 h-5 text-neon-pink animate-pulse" />
+          <h2 className="text-base font-bold font-display tracking-widest text-white uppercase flex items-center space-x-2">
+            <span>NEON Portfolio & Lab</span>
+            <span className="text-[10px] font-mono text-neon-blue font-light">V4.9-SECURE</span>
+          </h2>
+        </div>
+        
+        <div className="flex items-center space-x-4">
+          <button 
+            onClick={fetchAdminData}
+            className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-colors cursor-pointer"
+            title="Refresh Inbound Loggers"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+          
+          <button 
+            onClick={onClose}
+            className="flex items-center space-x-1.5 px-4 py-2 bg-white/5 border border-white/10 hover:border-neon-pink/40 rounded-xl text-slate-300 hover:text-white transition-all cursor-pointer text-xs uppercase tracking-wider font-semibold"
+          >
+            <X className="w-4 h-4" />
+            <span>Close Console</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Main split display: Navigation Drawer Left, details viewport Right */}
+      <div className="flex-grow flex flex-col md:flex-row overflow-hidden max-w-7xl mx-auto w-full p-4 sm:p-6 lg:p-8 gap-6 mt-4">
+        
+        {/* Navigation panel */}
+        <div className="w-full md:w-64 flex flex-row md:flex-col overflow-x-auto md:overflow-x-visible md:overflow-y-auto bg-slate-900/30 border border-white/5 rounded-2xl md:p-3 shrink-0 scrollbar-none gap-1 py-1 px-2 h-fit">
+          
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`w-full text-left px-4 py-3 rounded-xl text-xs uppercase font-bold tracking-wider transition-all flex items-center space-x-3 cursor-pointer ${
+              activeTab === 'overview' 
+                ? 'bg-gradient-to-r from-neon-purple to-neon-blue text-white shadow-md' 
+                : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+            }`}
+          >
+            <Terminal className="w-4 h-4" />
+            <span className="whitespace-nowrap">Dashboard Status</span>
+          </button>
+          
+          <button
+            onClick={() => setActiveTab('hero-about')}
+            className={`w-full text-left px-4 py-3 rounded-xl text-xs uppercase font-bold tracking-wider transition-all flex items-center space-x-3 cursor-pointer ${
+              activeTab === 'hero-about' 
+                ? 'bg-gradient-to-r from-neon-purple to-neon-blue text-white shadow-md' 
+                : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+            }`}
+          >
+            <Sparkles className="w-4 h-4" />
+            <span className="whitespace-nowrap">Hero & About</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('projects')}
+            className={`w-full text-left px-4 py-3 rounded-xl text-xs uppercase font-bold tracking-wider transition-all flex items-center space-x-3 cursor-pointer ${
+              activeTab === 'projects' 
+                ? 'bg-gradient-to-r from-neon-purple to-neon-blue text-white shadow-md' 
+                : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+            }`}
+          >
+            <Layers className="w-4 h-4" />
+            <span className="whitespace-nowrap">Projects list</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('skills-services')}
+            className={`w-full text-left px-4 py-3 rounded-xl text-xs uppercase font-bold tracking-wider transition-all flex items-center space-x-3 cursor-pointer ${
+              activeTab === 'skills-services' 
+                ? 'bg-gradient-to-r from-neon-purple to-neon-blue text-white shadow-md' 
+                : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+            }`}
+          >
+            <Hammer className="w-4 h-4" />
+            <span className="whitespace-nowrap">Skills & Services</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('messages')}
+            className={`w-full text-left px-4 py-3 rounded-xl text-xs uppercase font-bold tracking-wider transition-all flex items-center space-x-3 cursor-pointer relative ${
+              activeTab === 'messages' 
+                ? 'bg-gradient-to-r from-neon-purple to-neon-pink text-white shadow-md' 
+                : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+            }`}
+          >
+            <MessageSquareText className="w-4 h-4" />
+            <span className="whitespace-nowrap">Messages Inbox</span>
+            {messages.filter(m => !m.read).length > 0 && (
+              <span className="absolute right-4 px-1.5 py-0.5 rounded-full bg-neon-pink text-[9px] font-black text-white leading-none">
+                {messages.filter(m => !m.read).length}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('chatbot')}
+            className={`w-full text-left px-4 py-3 rounded-xl text-xs uppercase font-bold tracking-wider transition-all flex items-center space-x-3 cursor-pointer ${
+              activeTab === 'chatbot' 
+                ? 'bg-gradient-to-r from-neon-purple to-neon-blue text-white shadow-md' 
+                : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+            }`}
+          >
+            <Cpu className="w-4 h-4" />
+            <span className="whitespace-nowrap">Companion Setup</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`w-full text-left px-4 py-3 rounded-xl text-xs uppercase font-bold tracking-wider transition-all flex items-center space-x-3 cursor-pointer ${
+              activeTab === 'settings' 
+                ? 'bg-gradient-to-r from-neon-purple to-neon-blue text-white shadow-md' 
+                : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+            }`}
+          >
+            <SettingsIcon className="w-4 h-4" />
+            <span className="whitespace-nowrap">Global Settings</span>
+          </button>
+
+        </div>
+
+        {/* Viewport Detail card */}
+        <div className="flex-grow bg-slate-900/10 border border-white/5 p-6 rounded-3xl overflow-y-auto text-left relative glass-panel flex flex-col">
+          
+          <div className="absolute top-0 right-10 left-10 h-[1.5px] bg-gradient-to-r from-transparent via-neon-purple to-transparent opacity-40"></div>
+
+          {/* 1. OVERVIEW TELEMETRY SCREEN */}
+          {activeTab === 'overview' && (
+            <div className="space-y-6">
+              <h3 className="text-xl font-bold font-display text-white border-b border-white/5 pb-4 uppercase">Website Overview</h3>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="p-5 rounded-2xl bg-white/5 border border-white/5 hover:border-white/15 transition-all text-left">
+                  <span className="text-[10px] font-mono tracking-wider uppercase text-slate-400 block mb-1">Total inboxes</span>
+                  <span className="text-3xl font-black font-display text-white">{messages.length}</span>
+                  <span className="text-[10px] text-neon-pink block mt-2 font-mono uppercase">{messages.filter(m => !m.read).length} Unread inquiries</span>
+                </div>
+
+                <div className="p-5 rounded-2xl bg-white/5 border border-white/5 hover:border-white/15 transition-all text-left">
+                  <span className="text-[10px] font-mono tracking-wider uppercase text-slate-400 block mb-1">Core Projects</span>
+                  <span className="text-3xl font-black font-display text-white">{portfolioData.projects.length}</span>
+                  <span className="text-[10px] text-neon-blue block mt-2 font-mono uppercase">Dynamic grid assets</span>
+                </div>
+
+                <div className="p-5 rounded-2xl bg-white/5 border border-white/5 hover:border-white/15 transition-all text-left">
+                  <span className="text-[10px] font-mono tracking-wider uppercase text-slate-400 block mb-1">Companion Status</span>
+                  <span className={`text-sm font-bold uppercase ${settingsForm.chatbotEnabled ? 'text-emerald-400' : 'text-red-400'} block pt-1.5`}>
+                    {settingsForm.chatbotEnabled ? '● ACTIVE CHATTER' : '● DEACTIVATED'}
+                  </span>
+                  <span className="text-[10px] text-slate-500 block mt-3 font-mono uppercase">Uses gemini-2.5-flash</span>
+                </div>
+              </div>
+
+              {/* Chat history logs block inside Overview */}
+              <div className="space-y-3 pt-4">
+                <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                  <h4 className="text-xs font-mono tracking-widest text-[#a855f7] uppercase leading-none">Interactions Telemetry</h4>
+                  <span className="text-[10px] font-mono text-slate-500 uppercase">{chatLogs.length} LOGGED SESSIONS</span>
+                </div>
+
+                {loadingLogs ? (
+                  <p className="text-xs text-slate-500 font-mono">Syncing log files...</p>
+                ) : chatLogs.length === 0 ? (
+                  <p className="text-xs text-slate-500 font-mono italic">No recent chatbot sessions recorded.</p>
+                ) : (
+                  <div className="space-y-4 max-h-64 overflow-y-auto pr-2">
+                    {chatLogs.map((log, idx) => (
+                      <div key={idx} className="p-3.5 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 text-xs font-mono space-y-2 text-left">
+                        <div className="flex justify-between text-slate-500 text-[10px] uppercase">
+                          <span>User Prompt</span>
+                          <span>{new Date(log.timestamp).toLocaleTimeString()}</span>
+                        </div>
+                        <p className="text-xs text-slate-200 font-normal">{log.message}</p>
+                        <div className="h-[1px] bg-white/5"></div>
+                        <span className="text-neon-pink text-[9px] uppercase tracking-wide block">Reply</span>
+                        <p className="text-xs text-[#d1d5db] font-normal leading-relaxed">{log.reply}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* 2. HERO & ABOUT EDIT CHANNEL */}
+          {activeTab === 'hero-about' && (
+            <div className="space-y-6">
+              
+              {/* Hero block update forms */}
+              <div className="space-y-4">
+                <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                  <h3 className="text-base font-bold font-display text-white uppercase flex items-center space-x-2">
+                    <span>1. Hero Intro configuration</span>
+                  </h3>
+                  <button 
+                    onClick={saveHeroContent}
+                    disabled={savingState}
+                    className="px-4 py-2 bg-gradient-to-r from-neon-purple to-neon-blue rounded-xl text-xs text-white font-bold tracking-wider uppercase transition-all shadow-[0_0_15px_rgba(138,43,226,0.15)] hover:scale-103 cursor-pointer"
+                  >
+                    <Save className="w-3.5 h-3.5 inline mr-1" />
+                    <span>{savingState && saveSuccess === null ? 'Saving...' : 'Save Intro'}</span>
+                  </button>
+                </div>
+
+                {saveSuccess === 'hero' && <p className="text-xs text-emerald-400 font-mono uppercase">✔ Hero database node synchronized cleanly!</p>}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono uppercase text-slate-400">Developer Name</label>
+                    <input 
+                      type="text" 
+                      value={heroForm.name}
+                      onChange={e => setHeroForm({ ...heroForm, name: e.target.value })}
+                      className="w-full px-3 py-2 text-sm rounded-lg bg-white/5 text-white border border-white/10 focus:border-neon-purple outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono uppercase text-slate-400">Developer Subtitle Headline</label>
+                    <input 
+                      type="text" 
+                      value={heroForm.title}
+                      onChange={e => setHeroForm({ ...heroForm, title: e.target.value })}
+                      className="w-full px-3 py-2 text-sm rounded-lg bg-white/5 text-white border border-white/10 focus:border-neon-purple outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono uppercase text-slate-400">Job Subbadge Tag</label>
+                    <input 
+                      type="text" 
+                      value={heroForm.subtitle}
+                      onChange={e => setHeroForm({ ...heroForm, subtitle: e.target.value })}
+                      className="w-full px-3 py-2 text-sm rounded-lg bg-white/5 text-white border border-white/10 focus:border-neon-purple outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1 col-span-1 sm:col-span-2">
+                    <label className="text-[10px] font-mono uppercase text-slate-400">Hero Brief bio paragraph</label>
+                    <input 
+                      type="text" 
+                      value={heroForm.introParagraph}
+                      onChange={e => setHeroForm({ ...heroForm, introParagraph: e.target.value })}
+                      className="w-full px-3 py-2 text-sm rounded-lg bg-white/5 text-white border border-white/10 focus:border-neon-purple outline-none"
+                    />
+                  </div>
+                  <div className="space-y-2 col-span-1 sm:col-span-2">
+                    <label className="text-[10px] font-mono uppercase text-slate-400 block mb-1">Profile Photo Upload (File or URL Link)</label>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <input 
+                        type="text" 
+                        placeholder="Or paste any URL..."
+                        value={heroForm.profileImage}
+                        onChange={e => setHeroForm({ ...heroForm, profileImage: e.target.value })}
+                        className="flex-grow px-3 py-2 text-sm rounded-lg bg-white/5 text-white border border-white/10 focus:border-neon-purple outline-none h-10"
+                      />
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        onChange={e => convertToBase64AndAssign(e, 'profile')}
+                        className="text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-slate-100 file:cursor-pointer !h-10 mt-1"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono uppercase text-slate-400">Experience Yrs</label>
+                    <input 
+                      type="number" 
+                      value={heroForm.experienceYears}
+                      onChange={e => setHeroForm({ ...heroForm, experienceYears: Number(e.target.value) })}
+                      className="w-full px-3 py-2 text-sm rounded-lg bg-white/5 text-white border border-white/10 focus:border-neon-purple outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono uppercase text-slate-400">Projects Done</label>
+                    <input 
+                      type="number" 
+                      value={heroForm.projectsCompleted}
+                      onChange={e => setHeroForm({ ...heroForm, projectsCompleted: Number(e.target.value) })}
+                      className="w-full px-3 py-2 text-sm rounded-lg bg-white/5 text-white border border-white/10 focus:border-neon-purple outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono uppercase text-slate-400">Worked Clients</label>
+                    <input 
+                      type="number" 
+                      value={heroForm.clientsWorked}
+                      onChange={e => setHeroForm({ ...heroForm, clientsWorked: Number(e.target.value) })}
+                      className="w-full px-3 py-2 text-sm rounded-lg bg-white/5 text-white border border-white/10 focus:border-neon-purple outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono uppercase text-slate-400">Awards won</label>
+                    <input 
+                      type="number" 
+                      value={heroForm.awardsWon}
+                      onChange={e => setHeroForm({ ...heroForm, awardsWon: Number(e.target.value) })}
+                      className="w-full px-3 py-2 text-sm rounded-lg bg-white/5 text-white border border-white/10 focus:border-neon-purple outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* About block update forms */}
+              <div className="space-y-4 pt-6 border-t border-white/5">
+                <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                  <h3 className="text-base font-bold font-display text-white uppercase flex items-center space-x-2">
+                    <span>2. Details identity card (About)</span>
+                  </h3>
+                  <button 
+                    onClick={saveAboutContent}
+                    disabled={savingState}
+                    className="px-4 py-2 bg-gradient-to-r from-neon-purple to-neon-blue rounded-xl text-xs text-white font-bold tracking-wider uppercase transition-all shadow-[0_0_15px_rgba(138,43,226,0.15)] hover:scale-103 cursor-pointer"
+                  >
+                    <Save className="w-3.5 h-3.5 inline mr-1" />
+                    <span>{savingState && saveSuccess === null ? 'Saving...' : 'Save Identity'}</span>
+                  </button>
+                </div>
+
+                {saveSuccess === 'about' && <p className="text-xs text-emerald-400 font-mono uppercase">✔ About database node synchronized cleanly!</p>}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono uppercase text-slate-400">Identity Name</label>
+                    <input 
+                      type="text" 
+                      value={aboutForm.name}
+                      onChange={e => setAboutForm({ ...aboutForm, name: e.target.value })}
+                      className="w-full px-3 py-2 text-sm rounded-lg bg-white/5 text-white border border-white/10 focus:border-neon-purple outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono uppercase text-slate-400">Identity Email</label>
+                    <input 
+                      type="text" 
+                      value={aboutForm.email}
+                      onChange={e => setAboutForm({ ...aboutForm, email: e.target.value })}
+                      className="w-full px-3 py-2 text-sm rounded-lg bg-white/5 text-white border border-white/10 focus:border-neon-purple outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono uppercase text-slate-400">Identity Phone</label>
+                    <input 
+                      type="text" 
+                      value={aboutForm.phone}
+                      onChange={e => setAboutForm({ ...aboutForm, phone: e.target.value })}
+                      className="w-full px-3 py-2 text-sm rounded-lg bg-white/5 text-white border border-white/10 focus:border-neon-purple outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono uppercase text-slate-400">Identity Coordinates/Location</label>
+                    <input 
+                      type="text" 
+                      value={aboutForm.location}
+                      onChange={e => setAboutForm({ ...aboutForm, location: e.target.value })}
+                      className="w-full px-3 py-2 text-sm rounded-lg bg-white/5 text-white border border-white/10 focus:border-neon-purple outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono uppercase text-slate-400">Verification text</label>
+                    <input 
+                      type="text" 
+                      value={aboutForm.experienceYearText}
+                      onChange={e => setAboutForm({ ...aboutForm, experienceYearText: e.target.value })}
+                      className="w-full px-3 py-2 text-sm rounded-lg bg-white/5 text-white border border-white/10 focus:border-neon-purple outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1 col-span-1 sm:col-span-2">
+                    <label className="text-[10px] font-mono uppercase text-slate-400">Detailed Lab Bio summary</label>
+                    <textarea 
+                      rows={3}
+                      value={aboutForm.description}
+                      onChange={e => setAboutForm({ ...aboutForm, description: e.target.value })}
+                      className="w-full px-3 py-2 text-sm rounded-lg bg-white/5 text-white border border-white/10 focus:border-neon-purple outline-none resize-none"
+                    ></textarea>
+                  </div>
+                  <div className="space-y-2 col-span-1 sm:col-span-2">
+                    <label className="text-[10px] font-mono uppercase text-slate-400 block mb-1">Avatar Graphic Upload (File or URL Link)</label>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <input 
+                        type="text" 
+                        placeholder="Avatar url..."
+                        value={aboutForm.avatarUrl}
+                        onChange={e => setAboutForm({ ...aboutForm, avatarUrl: e.target.value })}
+                        className="flex-grow px-3 py-2 text-sm rounded-lg bg-white/5 text-white border border-white/10 focus:border-neon-purple outline-none h-10"
+                      />
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        onChange={e => convertToBase64AndAssign(e, 'avatar')}
+                        className="text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-slate-100 file:cursor-pointer !h-10 mt-1"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+          )}
+
+          {/* 3. PROJECTS CREATOR CHANNEL */}
+          {activeTab === 'projects' && (
+            <div className="space-y-6">
+              <h3 className="text-xl font-bold font-display text-white border-b border-white/5 pb-4 uppercase">Projects Laboratory</h3>
+              
+              {/* Submission Form */}
+              <form onSubmit={handleAddProject} className="p-5 rounded-2xl bg-white/5 border border-white/5 hover:border-white/10 text-xs font-mono space-y-4 text-left">
+                <span className="text-xs font-bold font-display text-neon-blue uppercase block mb-1">Upload New Creation</span>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[9px] uppercase tracking-wider text-slate-500">Project App Title</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={newProject.title}
+                      onChange={e => setNewProject({ ...newProject, title: e.target.value })}
+                      placeholder="e.g. Neon Ledger"
+                      className="w-full px-3 py-2 text-xs rounded-lg bg-slate-950 border border-white/10 focus:border-neon-purple outline-none text-white font-sans"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] uppercase tracking-wider text-slate-500">Filtration category</label>
+                    <select
+                      value={newProject.category}
+                      onChange={e => setNewProject({...newProject, category: e.target.value})}
+                      className="w-full px-3 py-2 text-xs rounded-lg bg-slate-950 border border-white/10 focus:border-neon-purple outline-none text-white h-[34px]"
+                    >
+                      <option value="web">Web Platform</option>
+                      <option value="app">Mobile App</option>
+                      <option value="uiux">UI/UX Design</option>
+                      <option value="backend">Backend/AI Service</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1 col-span-1 sm:col-span-2">
+                    <label className="text-[9px] uppercase tracking-wider text-slate-500">Visual description bio</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={newProject.description}
+                      onChange={e => setNewProject({ ...newProject, description: e.target.value })}
+                      placeholder="Cyberpunk analytics ledger with customizable glass metrics."
+                      className="w-full px-3 py-2 text-xs rounded-lg bg-slate-950 border border-white/10 focus:border-neon-purple outline-none text-white font-sans"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] uppercase tracking-wider text-slate-500">Tech Stacks (Commas separated)</label>
+                    <input 
+                      type="text" 
+                      value={newProject.tech}
+                      onChange={e => setNewProject({ ...newProject, tech: e.target.value })}
+                      placeholder="React, Tailwind, Node"
+                      className="w-full px-3 py-2 text-xs rounded-lg bg-slate-950 border border-white/10 focus:border-neon-purple outline-none text-white"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] uppercase tracking-wider text-slate-500">Live URL Demo link</label>
+                    <input 
+                      type="text" 
+                      value={newProject.liveUrl}
+                      onChange={e => setNewProject({ ...newProject, liveUrl: e.target.value })}
+                      placeholder="#"
+                      className="w-full px-3 py-2 text-xs rounded-lg bg-slate-950 border border-white/10 focus:border-neon-purple outline-none text-white"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] uppercase tracking-wider text-slate-500">Source code repository URL</label>
+                    <input 
+                      type="text" 
+                      value={newProject.sourceCode}
+                      onChange={e => setNewProject({ ...newProject, sourceCode: e.target.value })}
+                      placeholder="#"
+                      className="w-full px-3 py-2 text-xs rounded-lg bg-slate-950 border border-white/10 focus:border-neon-purple outline-none text-white"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] uppercase tracking-wider text-slate-500 block mb-1">Card Image file upload</label>
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      onChange={e => convertToBase64AndAssign(e, 'project')}
+                      className="text-xs text-slate-400 file:mr-4 file:py-1 file:px-3 file:rounded-xl file:border-0 file:text-[10px] file:font-semibold file:bg-white/10 file:text-slate-100 file:cursor-pointer mt-1"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-neon-blue hover:bg-neon-blue/80 rounded-xl text-white font-semibold transition-colors mt-2 flex items-center space-x-1 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Publish Creation</span>
+                </button>
+              </form>
+
+              {/* Dynamic list layout */}
+              <div className="space-y-3 pt-4">
+                <span className="text-xs uppercase font-mono tracking-widest text-slate-500 block">Published Creational nodes</span>
+                
+                {portfolioData.projects.map(p => (
+                  <div key={p.id} className="p-4 rounded-xl bg-white/5 border border-white/5 flex items-center justify-between text-left">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-12 h-12 rounded-lg overflow-hidden bg-slate-950 border border-white/10">
+                        <img src={p.imageUrl} className="w-full h-full object-cover" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-semibold text-slate-200">{p.title}</h4>
+                        <p className="text-[10px] font-mono text-neon-blue uppercase mt-1">/{p.category}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteProject(p.id)}
+                      className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg cursor-pointer"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+            </div>
+          )}
+
+          {/* 4. SKILLS & SERVICES MANAGER */}
+          {activeTab === 'skills-services' && (
+            <div className="space-y-8">
+              
+              {/* Skills configurations */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-bold font-display text-white border-b border-white/5 pb-2 uppercase">Core Skill Matrix</h3>
+                
+                {/* Form to append skill */}
+                <form onSubmit={handleAddSkill} className="p-4 rounded-2xl bg-white/5 border border-white/5 text-xs font-mono flex flex-wrap gap-3 items-end">
+                  <div className="space-y-1">
+                    <label className="text-[9px] uppercase tracking-wider text-slate-500">Skill Name</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={newSkill.name}
+                      onChange={e => setNewSkill({ ...newSkill, name: e.target.value })}
+                      placeholder="e.g. Next-JS"
+                      className="px-3 py-1.5 text-xs rounded-lg bg-slate-950 border border-white/10 focus:border-neon-purple outline-none text-white font-sans w-40"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] uppercase tracking-wider text-slate-500">Skill Level (%)</label>
+                    <input 
+                      type="number" 
+                      required
+                      min={0}
+                      max={100}
+                      value={newSkill.level}
+                      onChange={e => setNewSkill({ ...newSkill, level: Number(e.target.value) })}
+                      className="px-3 py-1.5 text-xs rounded-lg bg-slate-950 border border-white/10 focus:border-neon-purple outline-none text-white w-20"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] uppercase tracking-wider text-slate-500">Category</label>
+                    <select
+                      value={newSkill.category}
+                      onChange={e => setNewSkill({ ...newSkill, category: e.target.value })}
+                      className="px-3 py-1.5 text-xs rounded-lg bg-slate-950 border border-white/10 focus:border-neon-purple outline-none text-white h-[28px]"
+                    >
+                      <option value="frontend">Client Frontend</option>
+                      <option value="backend">Database & APIs</option>
+                      <option value="other">Creative Design</option>
+                    </select>
+                  </div>
+                  <button
+                    type="submit"
+                    className="px-4 py-1.5 bg-neon-purple text-white rounded-lg font-semibold hover:bg-neon-purple/80 cursor-pointer"
+                  >
+                    <span>Add Skill</span>
+                  </button>
+                </form>
+
+                {/* Skills render list */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-64 overflow-y-auto pr-2">
+                  {portfolioData.skills.map(sk => (
+                    <div key={sk.id} className="p-3 bg-white/5 border border-white/5 rounded-xl flex items-center justify-between text-left">
+                      <div>
+                        <span className="text-sm font-semibold text-slate-200">{sk.name}</span>
+                        <div className="flex items-center space-x-2 mt-1">
+                          <span className="text-[10px] font-mono text-neon-blue uppercase leading-none">{sk.category}</span>
+                          <span className="text-[10px] text-slate-500 font-mono leading-none">● {sk.level}%</span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteSkill(sk.id)}
+                        className="p-1.5 text-red-400 hover:bg-red-500/10 rounded-lg cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Service configurations */}
+              <div className="space-y-4 pt-6 border-t border-white/5">
+                <h3 className="text-lg font-bold font-display text-white border-b border-white/5 pb-2 uppercase">Operational Services</h3>
+                
+                {/* Form to append service */}
+                <form onSubmit={handleAddService} className="p-4 rounded-2xl bg-white/5 border border-white/5 text-xs font-mono space-y-3 text-left">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[9px] uppercase text-slate-500">Service Title</label>
+                      <input 
+                        type="text" 
+                        required
+                        value={newService.title}
+                        onChange={e => setNewService({ ...newService, title: e.target.value })}
+                        placeholder="Web Optimization"
+                        className="w-full px-3 py-1.5 text-xs rounded-lg bg-slate-950 border border-white/10 focus:border-neon-purple outline-none text-white font-sans"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[9px] uppercase text-slate-500">Visual Icon</label>
+                      <select
+                        value={newService.icon}
+                        onChange={e => setNewService({ ...newService, icon: e.target.value })}
+                        className="w-full px-3 py-1.5 text-xs rounded-lg bg-slate-950 border border-white/10 focus:border-neon-purple outline-none text-white h-[28px]"
+                      >
+                        <option value="Code">Code (Developers)</option>
+                        <option value="Smartphone">Smartphone (Responsive Apps)</option>
+                        <option value="Palette">Palette (UX Visual Designer)</option>
+                        <option value="Database">Database (API Architect)</option>
+                        <option value="TrendingUp">TrendingUp (Performance Auditor)</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1 col-span-1 sm:col-span-3">
+                      <label className="text-[9px] uppercase text-slate-500">Short capabilities sentence</label>
+                      <input 
+                        type="text" 
+                        required
+                        value={newService.description}
+                        onChange={e => setNewService({ ...newService, description: e.target.value })}
+                        placeholder="Detailed optimization auditing for core Web vites scoring."
+                        className="w-full px-3 py-1.5 text-xs rounded-lg bg-slate-950 border border-white/10 focus:border-neon-purple outline-none text-white font-sans"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    className="px-4 py-1.5 bg-neon-blue text-white rounded-lg font-semibold hover:bg-neon-blue/80 cursor-pointer"
+                  >
+                    <span>Publish Service</span>
+                  </button>
+                </form>
+
+                {/* Services render list */}
+                <div className="space-y-2 max-h-62 overflow-y-auto pr-2">
+                  {portfolioData.services.map(sv => (
+                    <div key={sv.id} className="p-3 bg-white/5 border border-white/5 rounded-xl flex items-center justify-between text-left">
+                      <div>
+                        <span className="text-sm font-semibold text-slate-200">{sv.title}</span>
+                        <p className="text-xs text-slate-400 font-sans mt-0.5 line-clamp-1">{sv.description}</p>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteService(sv.id)}
+                        className="p-1.5 text-red-400 hover:bg-red-500/10 rounded-lg cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {/* 5. MESSAGES INBOX PANEL */}
+          {activeTab === 'messages' && (
+            <div className="space-y-6 flex-grow flex flex-col">
+              <h3 className="text-xl font-bold font-display text-white border-b border-white/5 pb-4 uppercase">Customer Messages</h3>
+              
+              {messages.length === 0 ? (
+                <div className="p-12 text-center rounded-2xl border border-dashed border-white/10 bg-white/5 max-w-sm mx-auto flex-grow flex flex-col justify-center items-center">
+                  <Mail className="w-8 h-8 text-slate-600 animate-pulse" />
+                  <p className="text-slate-400 text-sm mt-3 font-semibold">Inbox is clear</p>
+                  <p className="text-xs text-slate-500 mt-1">No custom connection triggers recorded yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 flex-grow">
+                  {messages.map(msg => (
+                    <div 
+                      key={msg.id} 
+                      className={`p-5 rounded-2xl border text-left relative overflow-hidden transition-all ${
+                        msg.read 
+                          ? 'bg-slate-900/20 border-white/5' 
+                          : 'bg-[#1c1432]/30 border-neon-purple/40 shadow-md'
+                      }`}
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-3 border-b border-white/5 mb-3">
+                        <div>
+                          <span className="text-xs font-bold text-white uppercase">{msg.name}</span>
+                          <span className="text-[10px] font-mono text-neon-blue block uppercase mt-0.5">{msg.email}</span>
+                        </div>
+                        <span className="text-[9px] font-mono text-slate-500 uppercase">{new Date(msg.timestamp).toLocaleString()}</span>
+                      </div>
+
+                      <div className="space-y-2">
+                        <span className="text-xs font-semibold text-white tracking-tight">Subject: {msg.subject}</span>
+                        <p className="text-xs text-slate-300 font-sans leading-relaxed">{msg.message}</p>
+                      </div>
+
+                      <div className="flex items-center justify-end space-x-3 pt-4 border-t border-white/5 mt-4 text-[10px] font-mono">
+                        <button
+                          onClick={() => handleToggleRead(msg.id)}
+                          className={`px-2.5 py-1 rounded-md border text-[9px] uppercase font-bold cursor-pointer transition-colors ${
+                            msg.read 
+                              ? 'border-white/10 bg-white/5 text-slate-400' 
+                              : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                          }`}
+                        >
+                          {msg.read ? 'Mark Unread' : 'Mark Read'}
+                        </button>
+
+                        <button
+                          onClick={() => handleMarkReplied(msg.id)}
+                          disabled={msg.replied}
+                          className={`px-2.5 py-1 rounded-md border text-[9px] uppercase font-bold cursor-pointer transition-colors ${
+                            msg.replied 
+                              ? 'border-white/5 bg-white/5 text-slate-500' 
+                              : 'border-neon-blue/30 bg-neon-blue/10 text-neon-blue'
+                          }`}
+                        >
+                          {msg.replied ? '✔ Answered' : 'Mark Answered'}
+                        </button>
+
+                        <button
+                          onClick={() => handleDeleteMessage(msg.id)}
+                          className="px-2.5 py-1 rounded-md border border-red-500/20 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-[9px] uppercase font-bold cursor-pointer transition-colors"
+                        >
+                          <span>Erase</span>
+                        </button>
+                      </div>
+
+                    </div>
+                  ))}
+                </div>
+              )}
+
+            </div>
+          )}
+
+          {/* 6. CHATBOT PARAMETERS EDIT CHANNELS */}
+          {activeTab === 'chatbot' && (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center border-b border-white/5 pb-4">
+                <h3 className="text-xl font-bold font-display text-white uppercase flex items-center space-x-2">
+                  <span>AI Companion Control</span>
+                </h3>
+                <button 
+                  onClick={saveGlobalSettings}
+                  disabled={savingState}
+                  className="px-4 py-2 bg-gradient-to-r from-neon-purple to-neon-blue rounded-xl text-xs text-white font-bold tracking-wider uppercase transition-all shadow-[0_0_15px_rgba(138,43,226,0.15)] hover:scale-103 cursor-pointer"
+                >
+                  <Save className="w-3.5 h-3.5 inline mr-1" />
+                  <span>{savingState && saveSuccess === 'settings' ? 'Saving...' : 'Save AI Parameters'}</span>
+                </button>
+              </div>
+
+              {saveSuccess === 'settings' && <p className="text-xs text-emerald-400 font-mono uppercase">✔ Chatbot settings synchronized cleanly!</p>}
+
+              <div className="space-y-5 flex-grow">
+                <div className="flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-2xl">
+                  <div className="text-left">
+                    <span className="text-xs font-bold text-white block uppercase">Toggle Active Status</span>
+                    <span className="text-[10px] text-slate-400">Allows visitors to consult the companion floating widget.</span>
+                  </div>
+                  
+                  <button
+                    onClick={() => setSettingsForm({ ...settingsForm, chatbotEnabled: !settingsForm.chatbotEnabled })}
+                    className={`px-4 py-2 rounded-xl text-xs font-mono font-bold cursor-pointer transition-colors ${
+                      settingsForm.chatbotEnabled 
+                        ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-400' 
+                        : 'bg-red-500/20 border border-red-500/40 text-red-400'
+                    }`}
+                  >
+                    {settingsForm.chatbotEnabled ? 'COMPANION ACTIVE' : 'COMPANION SLEEP'}
+                  </button>
+                </div>
+
+                <div className="space-y-1 text-left">
+                  <label className="text-[10px] font-mono uppercase text-slate-400">Update OpenAI/Gemini custom API Key (Optional)</label>
+                  <input 
+                    type="password" 
+                    value={settingsForm.customApiKey || ''}
+                    onChange={e => setSettingsForm({ ...settingsForm, customApiKey: e.target.value })}
+                    placeholder="Leave empty to use pre-provisioned developer environment key..."
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-neon-purple outline-none text-xs text-white"
+                  />
+                  <p className="text-[10px] font-sans text-slate-500 mt-1 leading-normal">
+                    By default, the website automates chatbot reasoning using the injected container credential. You can supply your own developer secret token for isolation.
+                  </p>
+                </div>
+
+                <div className="space-y-2 text-left">
+                  <label className="text-[10px] font-mono uppercase text-slate-400 block mb-1">Quick replies array (Comma separated)</label>
+                  <input 
+                    type="text" 
+                    value={settingsForm.quickReplies?.join(', ') || ''}
+                    onChange={e => setSettingsForm({ ...settingsForm, quickReplies: e.target.value.split(',').map(s => s.trim()) })}
+                    placeholder="Web Development, Pricing Plans"
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-neon-purple outline-none text-xs text-white"
+                  />
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {/* 7. GLOBAL MASTER CONFIGS CHANNEL */}
+          {activeTab === 'settings' && (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center border-b border-white/5 pb-4">
+                <h3 className="text-xl font-bold font-display text-white uppercase flex items-center space-x-2">
+                  <span>Logo & Coordinates settings</span>
+                </h3>
+                <button 
+                  onClick={saveGlobalSettings}
+                  disabled={savingState}
+                  className="px-4 py-2 bg-gradient-to-r from-neon-purple to-neon-blue rounded-xl text-xs text-white font-bold tracking-wider uppercase transition-all shadow-[0_0_15px_rgba(138,43,226,0.15)] hover:scale-103 cursor-pointer"
+                >
+                  <Save className="w-3.5 h-3.5 inline mr-1" />
+                  <span>{savingState && saveSuccess === 'settings' ? 'Saving...' : 'Save configs'}</span>
+                </button>
+              </div>
+
+              {saveSuccess === 'settings' && <p className="text-xs text-emerald-400 font-mono uppercase">✔ Global systems nodes synchronized cleanly!</p>}
+
+              <div className="space-y-4 py-2">
+                {/* 1. Cyber Logo Identity Control */}
+                <div className="p-5 rounded-2xl bg-white/5 border border-white/5 space-y-4 text-left">
+                  <h4 className="text-xs font-mono font-bold text-neon-pink uppercase">1. Cyber Logo Identity Control</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1 text-left">
+                      <label className="text-[10px] font-mono uppercase text-slate-400">Website Title (Fallback logo text)</label>
+                      <input 
+                        type="text" 
+                        value={settingsForm.websiteTitle || ''}
+                        onChange={e => setSettingsForm({ ...settingsForm, websiteTitle: e.target.value })}
+                        className="w-full px-3 py-2 text-sm rounded-lg bg-white/5 text-white border border-white/10 focus:border-neon-purple outline-none"
+                      />
+                    </div>
+                    <div className="space-y-1 text-left">
+                      <label className="text-[10px] font-mono uppercase text-slate-400">Custom Brand Logo Text</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. SANJEEVI"
+                        value={settingsForm.logoText || ''}
+                        onChange={e => setSettingsForm({ ...settingsForm, logoText: e.target.value })}
+                        className="w-full px-3 py-2 text-sm rounded-lg bg-white/5 text-white border border-white/10 focus:border-neon-purple outline-none"
+                      />
+                    </div>
+                    <div className="space-y-1 text-left">
+                      <label className="text-[10px] font-mono uppercase text-slate-400">Logo Type Mode</label>
+                      <select
+                        value={settingsForm.logoType || 'icon'}
+                        onChange={e => setSettingsForm({ ...settingsForm, logoType: e.target.value as 'icon' | 'image' })}
+                        className="w-full px-3 py-2 text-sm rounded-lg bg-[#0e0a1f] text-white border border-white/10 focus:border-neon-purple outline-none"
+                      >
+                        <option value="icon">Cyber Symbol / Icon</option>
+                        <option value="image">Custom Uploaded Logo Image</option>
+                      </select>
+                    </div>
+
+                    {settingsForm.logoType === 'image' ? (
+                      <div className="space-y-1 text-left">
+                        <label className="text-[10px] font-mono uppercase text-slate-400 font-bold text-neon-blue">Logo Image (URL or Local File)</label>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <input 
+                            type="text" 
+                            placeholder="Image Url..."
+                            value={settingsForm.logoImageUrl || ''}
+                            onChange={e => setSettingsForm({ ...settingsForm, logoImageUrl: e.target.value })}
+                            className="flex-grow px-3 py-1.5 text-xs rounded-lg bg-white/5 text-white border border-white/10 focus:border-neon-purple outline-none h-9"
+                          />
+                          <input 
+                            type="file" 
+                            accept="image/*"
+                            onChange={e => convertToBase64AndAssign(e, 'logo')}
+                            className="text-[10.5px] text-slate-400 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:bg-white/15 file:text-white file:text-[10px] file:cursor-pointer mt-0.5"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-1 text-left">
+                        <label className="text-[10px] font-mono uppercase text-slate-400">Select Cyber Vector Icon</label>
+                        <select
+                          value={settingsForm.logoIconName || 'Terminal'}
+                          onChange={e => setSettingsForm({ ...settingsForm, logoIconName: e.target.value })}
+                          className="w-full px-3 py-2 text-sm rounded-lg bg-[#0e0a1f] text-white border border-white/10 focus:border-neon-purple outline-none"
+                        >
+                          <option value="Terminal">Terminal (&gt;_)</option>
+                          <option value="Sparkles">Sparkles (✦)</option>
+                          <option value="Briefcase">Briefcase (💼)</option>
+                          <option value="Cpu">CPU (💻)</option>
+                          <option value="Code">Code (&lt;&gt;)</option>
+                          <option value="Flame">Flame (🔥)</option>
+                          <option value="Zap">Zap (⚡)</option>
+                          <option value="Atom">Atom (⚛)</option>
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. Interactive Hero Banner Backdrop Control */}
+                <div className="p-5 rounded-2xl bg-white/5 border border-white/5 space-y-4 text-left">
+                  <h4 className="text-xs font-mono font-bold text-neon-blue uppercase">2. Interactive Hero Banner Backdrop Control</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1 text-left">
+                      <label className="text-[10px] font-mono uppercase text-slate-400">Banner Background Theme Mode</label>
+                      <select
+                        value={settingsForm.bannerBgType || 'glow'}
+                        onChange={e => setSettingsForm({ ...settingsForm, bannerBgType: e.target.value as 'glow' | 'image' })}
+                        className="w-full px-3 py-2 text-sm rounded-lg bg-[#0e0a1f] text-white border border-white/10 focus:border-neon-purple outline-none"
+                      >
+                        <option value="glow">Futuristic Radial Ambient Glow Only</option>
+                        <option value="image">Premium Background Image with Overlay Glow</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1 text-left">
+                      <label className="text-[10px] font-mono uppercase text-slate-400">Cyber Grid Background Pattern</label>
+                      <select
+                        value={settingsForm.bannerShowGrid === false ? 'false' : 'true'}
+                        onChange={e => setSettingsForm({ ...settingsForm, bannerShowGrid: e.target.value === 'true' })}
+                        className="w-full px-3 py-2 text-sm rounded-lg bg-[#0e0a1f] text-white border border-white/10 focus:border-neon-purple outline-none"
+                      >
+                        <option value="true">Enable Digital Holographic Grid</option>
+                        <option value="false">Disable Digital Grid (Clean Canvas)</option>
+                      </select>
+                    </div>
+
+                    {settingsForm.bannerBgType === 'image' && (
+                      <div className="space-y-1 text-left col-span-1 sm:col-span-2">
+                        <label className="text-[10px] font-mono uppercase text-slate-400 font-bold text-neon-blue">Banner Background (URL or Local File)</label>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <input 
+                            type="text" 
+                            placeholder="Image Url link..."
+                            value={settingsForm.bannerBgImageUrl || ''}
+                            onChange={e => setSettingsForm({ ...settingsForm, bannerBgImageUrl: e.target.value })}
+                            className="flex-grow px-3 py-1.5 text-xs rounded-lg bg-white/5 text-white border border-white/10 focus:border-neon-purple outline-none h-9"
+                          />
+                          <input 
+                            type="file" 
+                            accept="image/*"
+                            onChange={e => convertToBase64AndAssign(e, 'banner')}
+                            className="text-[10.5px] text-slate-400 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:bg-white/15 file:text-white file:text-[10px] file:cursor-pointer mt-0.5"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="space-y-1 text-left">
+                      <label className="text-[10px] font-mono uppercase text-slate-400">Primary Banner Bloom Color</label>
+                      <div className="flex items-center space-x-2">
+                        <input 
+                          type="color" 
+                          value={settingsForm.bannerGlow1 || '#9333ea'}
+                          onChange={e => setSettingsForm({ ...settingsForm, bannerGlow1: e.target.value })}
+                          className="w-10 h-8 rounded border border-white/10 cursor-pointer bg-transparent"
+                        />
+                        <span className="text-[10px] font-mono text-slate-400">{settingsForm.bannerGlow1 || '#9333ea'}</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1 text-left">
+                      <label className="text-[10px] font-mono uppercase text-slate-400">Secondary Banner Bloom Color</label>
+                      <div className="flex items-center space-x-2">
+                        <input 
+                          type="color" 
+                          value={settingsForm.bannerGlow2 || '#3b82f6'}
+                          onChange={e => setSettingsForm({ ...settingsForm, bannerGlow2: e.target.value })}
+                          className="w-10 h-8 rounded border border-white/10 cursor-pointer bg-transparent"
+                        />
+                        <span className="text-[10px] font-mono text-slate-400">{settingsForm.bannerGlow2 || '#3b82f6'}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Coordinates & Links */}
+                <div className="p-5 rounded-2xl bg-white/5 border border-white/5 space-y-4 text-left">
+                  <h4 className="text-xs font-mono font-bold text-neon-purple uppercase">3. Developer Coordinates & Social Profiles</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1 text-left">
+                      <label className="text-[10px] font-mono uppercase text-slate-400">Resume/CV download link</label>
+                      <input 
+                        type="text" 
+                        value={settingsForm.resumeUrl}
+                        onChange={e => setSettingsForm({ ...settingsForm, resumeUrl: e.target.value })}
+                        className="w-full px-3 py-2 text-sm rounded-lg bg-white/5 text-white border border-white/10 focus:border-neon-purple outline-none"
+                      />
+                    </div>
+                    <div className="space-y-1 text-left">
+                      <label className="text-[10px] font-mono uppercase text-slate-400">GitHub Profile URL</label>
+                      <input 
+                        type="text" 
+                        value={settingsForm.githubUrl}
+                        onChange={e => setSettingsForm({ ...settingsForm, githubUrl: e.target.value })}
+                        className="w-full px-3 py-2 text-sm rounded-lg bg-white/5 text-white border border-white/10 focus:border-neon-purple outline-none"
+                      />
+                    </div>
+                    <div className="space-y-1 text-left">
+                      <label className="text-[10px] font-mono uppercase text-slate-400">LinkedIn Profile URL</label>
+                      <input 
+                        type="text" 
+                        value={settingsForm.linkedinUrl}
+                        onChange={e => setSettingsForm({ ...settingsForm, linkedinUrl: e.target.value })}
+                        className="w-full px-3 py-2 text-sm rounded-lg bg-white/5 text-white border border-white/10 focus:border-neon-purple outline-none"
+                      />
+                    </div>
+                    <div className="space-y-1 text-left">
+                      <label className="text-[10px] font-mono uppercase text-slate-400">Twitter Profile URL</label>
+                      <input 
+                        type="text" 
+                        value={settingsForm.twitterUrl}
+                        onChange={e => setSettingsForm({ ...settingsForm, twitterUrl: e.target.value })}
+                        className="w-full px-3 py-2 text-sm rounded-lg bg-white/5 text-white border border-white/10 focus:border-neon-purple outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* INTERACTIVE STYLE CUSTOMIZER SECTION */}
+              <div className="mt-8 border-t border-white/10 pt-6">
+                <div className="flex items-center space-x-2 text-neon-blue mb-3 text-left">
+                  <Sparkles className="w-4 h-4 animate-pulse text-neon-pink" />
+                  <span className="text-xs font-mono font-bold uppercase tracking-wider">Cyber Theme & Design Console</span>
+                </div>
+
+                <div className="space-y-6">
+                  {/* Part A: Choose Preset Theme */}
+                  <div className="space-y-2 text-left">
+                    <label className="text-[10px] font-mono uppercase text-slate-400">Cyber Accent Presets</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {[
+                        { id: 'purple', name: 'Classic Neon' },
+                        { id: 'blue', name: 'Cyber Indigo' },
+                        { id: 'pink', name: 'Sunset Synth' },
+                        { id: 'emerald', name: 'Bio Emerald' },
+                        { id: 'sunset', name: 'Solar Flare' },
+                        { id: 'cyberpunk', name: 'Neon Tokyo' },
+                        { id: 'mono', name: 'Cyber Slate' },
+                        { id: 'custom', name: 'Manual Overrides' },
+                      ].map(item => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => setSettingsForm({ ...settingsForm, themePreset: item.id })}
+                          className={`p-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col justify-center h-12 ${
+                            (settingsForm.themePreset || 'purple') === item.id
+                              ? 'border-neon-purple bg-neon-purple/10 text-white font-bold'
+                              : 'border-white/5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          <span className="text-[10px] block truncate">{item.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Part B: Manual Color Overrides */}
+                  {settingsForm.themePreset === 'custom' && (
+                    <div className="p-4 bg-white/5 border border-white/5 rounded-2xl text-left space-y-3">
+                      <span className="text-[10px] font-mono uppercase text-neon-pink block">Manual Neural Overrides</span>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="space-y-1">
+                          <span className="text-[9px] font-mono uppercase text-slate-400 block">Primary Glow</span>
+                          <div className="flex items-center space-x-2">
+                            <input 
+                              type="color" 
+                              value={settingsForm.customPurple || '#9333ea'}
+                              onChange={e => setSettingsForm({ ...settingsForm, customPurple: e.target.value })}
+                              className="w-8 h-8 rounded border border-white/10 cursor-pointer bg-transparent"
+                            />
+                            <span className="text-[10px] font-mono text-slate-400">{settingsForm.customPurple || '#9333ea'}</span>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <span className="text-[9px] font-mono uppercase text-slate-400 block">Secondary Glow</span>
+                          <div className="flex items-center space-x-2">
+                            <input 
+                              type="color" 
+                              value={settingsForm.customBlue || '#3b82f6'}
+                              onChange={e => setSettingsForm({ ...settingsForm, customBlue: e.target.value })}
+                              className="w-8 h-8 rounded border border-white/10 cursor-pointer bg-transparent"
+                            />
+                            <span className="text-[10px] font-mono text-slate-400">{settingsForm.customBlue || '#3b82f6'}</span>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <span className="text-[9px] font-mono uppercase text-slate-400 block">Highlight Accent</span>
+                          <div className="flex items-center space-x-2">
+                            <input 
+                              type="color" 
+                              value={settingsForm.customPink || '#ec4899'}
+                              onChange={e => setSettingsForm({ ...settingsForm, customPink: e.target.value })}
+                              className="w-8 h-8 rounded border border-white/10 cursor-pointer bg-transparent"
+                            />
+                            <span className="text-[10px] font-mono text-slate-400">{settingsForm.customPink || '#ec4899'}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Part C: Profile Art Geometry */}
+                  <div className="space-y-2 text-left">
+                    <label className="text-[10px] font-mono uppercase text-slate-400">Profile Art Geometry shape</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {[
+                        { id: 'circle', label: 'Orbiter Circle' },
+                        { id: 'hexagon', label: 'Neural Hexagon' },
+                        { id: 'octagon', label: 'Cyber Shield' },
+                        { id: 'diamond', label: 'Hyper Diamond' },
+                      ].map(item => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => setSettingsForm({ ...settingsForm, artShape: item.id })}
+                          className={`p-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col justify-center h-12 ${
+                            (settingsForm.artShape || 'circle') === item.id
+                              ? 'border-neon-pink bg-neon-pink/10 text-white font-bold'
+                              : 'border-white/5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          <span className="text-[10px] block truncate">{item.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Part D: Primary Interaction Buttons */}
+                  <div className="space-y-2 text-left">
+                    <label className="text-[10px] font-mono uppercase text-slate-400">System Click Node styles</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {[
+                        { id: 'glow', label: 'Glow Capsule' },
+                        { id: 'sharp', label: 'Sharp Monolith' },
+                        { id: 'cyber-pill', label: 'Sleek Pill' },
+                        { id: 'glitch', label: 'Slanted Glitch' },
+                      ].map(item => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => setSettingsForm({ ...settingsForm, buttonStyle: item.id })}
+                          className={`p-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col justify-center h-12 ${
+                            (settingsForm.buttonStyle || 'glow') === item.id
+                              ? 'border-neon-blue bg-neon-blue/10 text-white font-bold'
+                              : 'border-white/5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          <span className="text-[10px] block truncate">{item.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              {/* DANGEROUS DISASTER CONTROL: HARD RESET ZONE */}
+              <div className="mt-8 border-t border-red-500/20 pt-6">
+                <div className="flex items-center space-x-2 text-red-400 mb-3 text-left">
+                  <AlertCircle className="w-4 h-4 animate-pulse text-red-500" />
+                  <span className="text-xs font-mono font-bold uppercase tracking-wider">System Disaster Control Node</span>
+                </div>
+
+                <div className="p-4 bg-red-950/10 border border-red-500/20 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-left">
+                  <div className="space-y-1 max-w-md">
+                    <span className="text-xs font-bold text-red-400 block uppercase font-display">Neural State Hard Reset</span>
+                    <p className="text-[11px] text-slate-400 leading-normal">
+                      Wipes all local backups, clears dynamic chat telemetry, removes portfolio edits, and cleanly re-seeds default settings templates in the database. <strong>This operation is irreversible.</strong>
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={triggerHardReset}
+                    disabled={resetState === 'resetting'}
+                    className={`px-5 py-3 rounded-xl text-xs font-bold tracking-widest uppercase cursor-pointer transition-all duration-300 w-full sm:w-auto text-center flex items-center justify-center space-x-2 border min-w-[210px] ${
+                      resetState === 'idle'
+                        ? 'bg-red-950/20 border-red-500/30 hover:bg-red-500 hover:text-white text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.1)]'
+                        : resetState === 'confirming'
+                        ? 'bg-amber-500 border-amber-600 text-slate-950 font-black animate-pulse shadow-[0_0_20px_rgba(245,158,11,0.4)]'
+                        : resetState === 'resetting'
+                        ? 'bg-blue-600 border-blue-700 text-white cursor-not-allowed'
+                        : 'bg-emerald-500 border-emerald-600 text-slate-950 font-bold'
+                    }`}
+                  >
+                    {resetState === 'idle' && (
+                      <>
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>HARD RESET DATA</span>
+                      </>
+                    )}
+                    
+                    {resetState === 'confirming' && (
+                      <>
+                        <Terminal className="w-3.5 h-3.5 animate-pulse" />
+                        <span>CONFIRM ({resetCountdown}s)</span>
+                      </>
+                    )}
+
+                    {resetState === 'resetting' && (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>WIPING STATE...</span>
+                      </>
+                    )}
+
+                    {resetState === 'success' && (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        <span>RESET COMPLETED!</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          )}
+
+        </div>
+
+      </div>
+
+    </div>
+  );
+}

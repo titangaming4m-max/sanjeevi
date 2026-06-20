@@ -1,0 +1,145 @@
+{
+  "entities": {
+    "Settings": {
+      "title": "Settings",
+      "description": "Global website and portfolio state configuration.",
+      "type": "object",
+      "properties": {
+        "websiteTitle": { "type": "string" },
+        "githubUrl": { "type": "string" },
+        "linkedinUrl": { "type": "string" },
+        "twitterUrl": { "type": "string" },
+        "resumeUrl": { "type": "string" },
+        "chatbotEnabled": { "type": "boolean" },
+        "quickReplies": { "type": "array" },
+        "customApiKey": { "type": "string" }
+      },
+      "required": ["websiteTitle", "chatbotEnabled"]
+    },
+    "HeroData": {
+      "title": "HeroData",
+      "description": "Hero section content and developer stats.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "subtitle": { "type": "string" },
+        "name": { "type": "string" },
+        "introParagraph": { "type": "string" },
+        "profileImage": { "type": "string" },
+        "experienceYears": { "type": "integer" },
+        "projectsCompleted": { "type": "integer" },
+        "clientsWorked": { "type": "integer" },
+        "awardsWon": { "type": "integer" }
+      },
+      "required": ["title", "subtitle", "name"]
+    },
+    "AboutData": {
+      "title": "AboutData",
+      "description": "About section profile content.",
+      "type": "object",
+      "properties": {
+        "description": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "location": { "type": "string" },
+        "experienceYearText": { "type": "string" },
+        "avatarUrl": { "type": "string" }
+      },
+      "required": ["name", "email", "description"]
+    },
+    "Skill": {
+      "title": "Skill",
+      "description": "Technical capability item.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "level": { "type": "integer" },
+        "category": { "type": "string" }
+      },
+      "required": ["id", "name", "level", "category"]
+    },
+    "Service": {
+      "title": "Service",
+      "description": "Freelance/consultation service offering.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "icon": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" }
+      },
+      "required": ["id", "title", "description"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "Portfolio work showcase project detail.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "tech": { "type": "array" },
+        "liveUrl": { "type": "string" },
+        "sourceCode": { "type": "string" },
+        "category": { "type": "string" }
+      },
+      "required": ["id", "title", "description", "imageUrl", "tech"]
+    },
+    "ContactMessage": {
+      "title": "ContactMessage",
+      "description": "Visitor contact submission.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "subject": { "type": "string" },
+        "message": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "read": { "type": "boolean" },
+        "replied": { "type": "boolean" }
+      },
+      "required": ["id", "name", "email", "message", "timestamp"]
+    },
+    "ChatLog": {
+      "title": "ChatLog",
+      "description": "A conversational exchange log from the portfolio companion AI chatbot.",
+      "type": "object",
+      "properties": {
+        "message": { "type": "string" },
+        "reply": { "type": "string" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["message", "reply", "timestamp"]
+    }
+  },
+  "firestore": {
+    "portfolio_data/{docId}": {
+      "schema": "object",
+      "description": "Dynamic structural content for website sections (settings, hero, about)."
+    },
+    "portfolio_skills/{skillId}": {
+      "schema": "Skill",
+      "description": "Individual technical expertise matrices."
+    },
+    "portfolio_services/{serviceId}": {
+      "schema": "Service",
+      "description": "Individual services/offerings."
+    },
+    "portfolio_projects/{projectId}": {
+      "schema": "Project",
+      "description": "Featured developer creations."
+    },
+    "portfolio_messages/{messageId}": {
+      "schema": "ContactMessage",
+      "description": "Contact form transmission messages."
+    },
+    "portfolio_chat_logs/{logId}": {
+      "schema": "ChatLog",
+      "description": "Chat transcript records for auditing companion replies."
+    }
+  }
+}
