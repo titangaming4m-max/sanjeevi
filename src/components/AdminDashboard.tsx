@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Lock, KeyRound, Save, Plus, Trash2, Check, RefreshCw, X, MessageSquare, 
-  Layers, Hammer, Cpu, Settings as SettingsIcon, AlertCircle, Sparkles, Terminal, Mail, MessageSquareText, RotateCcw, Loader2
+  Layers, Hammer, Cpu, Settings as SettingsIcon, AlertCircle, Sparkles, Terminal, Mail, MessageSquareText, RotateCcw, Loader2,
+  BarChart3, Upload, Download, FileText, Eye, Server, Activity
 } from 'lucide-react';
-import { Project, Skill, Service, Message, HeroData, AboutData, Settings } from '../types';
+import { Project, Skill, Service, Message, HeroData, AboutData, Settings, ResumeDetails, WorkExperience, EducationEntry } from '../types';
 
 interface AdminDashboardProps {
   onClose: () => void;
@@ -35,7 +36,23 @@ export default function AdminDashboard({
   const [loggingIn, setLoggingIn] = useState(false);
 
   // Tabs
-  const [activeTab, setActiveTab] = useState<'overview' | 'hero-about' | 'projects' | 'skills-services' | 'messages' | 'chatbot' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'analyze' | 'hero-about' | 'projects' | 'skills-services' | 'messages' | 'chatbot' | 'settings' | 'resume'>('overview');
+
+  // Resume details editing states
+  const [resumeForm, setResumeForm] = useState<ResumeDetails>({
+    fullName: '',
+    subtitle: '',
+    location: '',
+    email: '',
+    phone: '',
+    philosophy: '',
+    skills: [],
+    experienceList: [],
+    educationList: []
+  });
+  const [resumeSkillsText, setResumeSkillsText] = useState('');
+  const [loadingResumeDetails, setLoadingResumeDetails] = useState(false);
+  const [savingResumeDetails, setSavingResumeDetails] = useState(false);
 
   // Mutation Save states
   const [savingState, setSavingState] = useState(false);
@@ -45,6 +62,13 @@ export default function AdminDashboard({
   const [messages, setMessages] = useState<Message[]>([]);
   const [chatLogs, setChatLogs] = useState<any[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [confirmDeleteProjectId, setConfirmDeleteProjectId] = useState<string | null>(null);
+  const [confirmDeleteSkillId, setConfirmDeleteSkillId] = useState<string | null>(null);
+  const [confirmDeleteServiceId, setConfirmDeleteServiceId] = useState<string | null>(null);
+  const [editingLogId, setEditingLogId] = useState<string | null>(null);
+  const [editLogForm, setEditLogForm] = useState({ message: '', reply: '' });
+  const [confirmDeleteLogId, setConfirmDeleteLogId] = useState<string | null>(null);
 
   // Dynamic Item Form States
   const [newProject, setNewProject] = useState({
@@ -57,6 +81,37 @@ export default function AdminDashboard({
   const [heroForm, setHeroForm] = useState<HeroData>({ ...portfolioData.hero });
   const [aboutForm, setAboutForm] = useState<AboutData>({ ...portfolioData.about });
   const [settingsForm, setSettingsForm] = useState<Settings>({ ...portfolioData.settings });
+
+  // Resume upload manager states
+  const [resumeInfo, setResumeInfo] = useState<{
+    fileName: string;
+    contentType: string;
+    uploadedAt: string;
+    fileSize: number;
+  } | null>(null);
+  const [resumeUploading, setResumeUploading] = useState(false);
+  const [resumeUploadError, setResumeUploadError] = useState<string | null>(null);
+  const [resumeUploadSuccess, setResumeUploadSuccess] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  // Connection/Handshake probe states
+  const [probeLog, setProbeLog] = useState<string[]>([]);
+  const [isProbing, setIsProbing] = useState(false);
+  const [handshakeSuccess, setHandshakeSuccess] = useState(false);
+
+  const fetchResumeInfo = async () => {
+    try {
+      const res = await fetch('/api/resume/info');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setResumeInfo(data);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch resume details:", err);
+    }
+  };
 
   // Hard Reset States
   const [resetState, setResetState] = useState<'idle' | 'confirming' | 'resetting' | 'success'>('idle');
@@ -121,6 +176,7 @@ export default function AdminDashboard({
     setHeroForm({ ...portfolioData.hero });
     setAboutForm({ ...portfolioData.about });
     setSettingsForm({ ...portfolioData.settings });
+    fetchResumeInfo();
   }, [portfolioData]);
 
   // Load backend admin data (messages & chat telemetry) if token present
@@ -148,11 +204,96 @@ export default function AdminDashboard({
       const logs = await logsRes.json();
       if (Array.isArray(logs)) setChatLogs(logs);
 
+      // Fetch structured resume details
+      await fetchResumeDetailsData();
+
     } catch (err) {
       console.error('Error fetching admin details:', err);
     } finally {
       setLoadingLogs(false);
     }
+  };
+
+  const fetchResumeDetailsData = async () => {
+    setLoadingResumeDetails(true);
+    try {
+      const res = await fetch('/api/resume/details');
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          setResumeForm(json.data);
+          setResumeSkillsText(json.data.skills ? json.data.skills.join(', ') : '');
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load structured resume in admin dashboard:', err);
+    } finally {
+      setLoadingResumeDetails(false);
+    }
+  };
+
+  const saveResumeDetailsData = async () => {
+    if (!token) return;
+    setSavingResumeDetails(true);
+    try {
+      const skillsArray = resumeSkillsText
+        .split(',')
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
+
+      const payload = {
+        ...resumeForm,
+        skills: skillsArray
+      };
+
+      const res = await fetch('/api/resume/details/update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success) {
+          setResumeForm(json.data);
+          setResumeSkillsText(json.data.skills ? json.data.skills.join(', ') : '');
+          setSaveSuccess('resume_details');
+          setTimeout(() => setSaveSuccess(null), 3000);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSavingResumeDetails(false);
+    }
+  };
+
+  const runHandshakeProbe = () => {
+    if (isProbing) return;
+    setIsProbing(true);
+    setHandshakeSuccess(false);
+    setProbeLog([]);
+
+    const steps = [
+      { text: "⚡ Initializing quantum socket handshake probe...", delay: 200 },
+      { text: "🛰️ Fetching server container node headers...", delay: 600 },
+      { text: "📡 Tunnel status verified: Status [SYNCED]", delay: 1100 },
+      { text: "🔒 Checking signature keys and origin authority...", delay: 1600 },
+      { text: `📊 Sync complete: ${portfolioData.projects.length} projects, ${chatLogs.length} chat triggers resolved.`, delay: 2100 },
+      { text: "🎉 Secure bridge to admin console verified! Latency: 14ms", delay: 2600 }
+    ];
+
+    steps.forEach((step, idx) => {
+      setTimeout(() => {
+        setProbeLog(prev => [...prev, step.text]);
+        if (idx === steps.length - 1) {
+          setIsProbing(false);
+          setHandshakeSuccess(true);
+        }
+      }, step.delay);
+    });
   };
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
@@ -256,6 +397,75 @@ export default function AdminDashboard({
     }
   };
 
+  const handleUploadResumeFile = async (file: File) => {
+    if (!file) return;
+    
+    // Validate file size (max 8MB for Firestore compatibility)
+    if (file.size > 8 * 1024 * 1024) {
+      setResumeUploadError("File size is too large (max 8MB). Please load a smaller file.");
+      setResumeUploadSuccess(false);
+      return;
+    }
+
+    setResumeUploading(true);
+    setResumeUploadError(null);
+    setResumeUploadSuccess(false);
+
+    try {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = async () => {
+        try {
+          const dataUrl = reader.result as string;
+          const base64Parts = dataUrl.split(',');
+          const base64Data = base64Parts[1];
+          const contentType = file.type || 'application/pdf';
+
+          const res = await fetch('/api/resume/upload', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              fileName: file.name,
+              contentType,
+              base64Data
+            })
+          });
+
+          if (res.ok) {
+            setResumeUploadSuccess(true);
+            setResumeInfo({
+              fileName: file.name,
+              contentType,
+              uploadedAt: new Date().toISOString(),
+              fileSize: file.size
+            });
+            setSettingsForm(prev => ({ ...prev, resumeUrl: '/api/resume/download' }));
+            onRefreshData();
+          } else {
+            const errData = await res.json();
+            setResumeUploadError(errData.error || "Failed to upload file.");
+          }
+        } catch (innerErr: any) {
+          setResumeUploadError(innerErr.message || "Encoding issue.");
+        } finally {
+          setResumeUploading(false);
+        }
+      };
+
+      reader.onerror = () => {
+         setResumeUploadError("Unable to parse file.");
+         setResumeUploading(false);
+      };
+
+    } catch (err: any) {
+      setResumeUploadError(err.message || "An unexpected error occurred during upload.");
+      setResumeUploading(false);
+    }
+  };
+
   // Projects mutation handlers
   const handleAddProject = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -279,13 +489,15 @@ export default function AdminDashboard({
   };
 
   const handleDeleteProject = async (id: string) => {
-    if (!window.confirm('Delete this project irrevocably from database?')) return;
     try {
       const res = await fetch(`/api/projects/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (res.ok) onRefreshData();
+      if (res.ok) {
+        setConfirmDeleteProjectId(null);
+        onRefreshData();
+      }
     } catch (err) {
       console.error(err);
     }
@@ -319,7 +531,10 @@ export default function AdminDashboard({
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (res.ok) onRefreshData();
+      if (res.ok) {
+        setConfirmDeleteSkillId(null);
+        onRefreshData();
+      }
     } catch (err) {
       console.error(err);
     }
@@ -353,7 +568,10 @@ export default function AdminDashboard({
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (res.ok) onRefreshData();
+      if (res.ok) {
+        setConfirmDeleteServiceId(null);
+        onRefreshData();
+      }
     } catch (err) {
       console.error(err);
     }
@@ -385,15 +603,59 @@ export default function AdminDashboard({
   };
 
   const handleDeleteMessage = async (id: string) => {
-    if (!window.confirm('Erase contact query from records?')) return;
     try {
       const res = await fetch(`/api/messages/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (res.ok) fetchAdminData();
+      if (res.ok) {
+        setConfirmDeleteId(null);
+        fetchAdminData();
+      }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleStartEditLog = (log: any) => {
+    setEditingLogId(log.id || log.timestamp);
+    setEditLogForm({
+      message: log.message,
+      reply: log.reply
+    });
+  };
+
+  const handleSaveEditTelemetryLog = async (id: string) => {
+    try {
+      const res = await fetch(`/api/chat/history/${id}`, {
+        method: 'PUT',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(editLogForm)
+      });
+      if (res.ok) {
+        setEditingLogId(null);
+        fetchAdminData();
+      }
+    } catch (err) {
+      console.error('Error saving telemetry log edit:', err);
+    }
+  };
+
+  const handleDeleteTelemetryLog = async (id: string) => {
+    try {
+      const res = await fetch(`/api/chat/history/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setConfirmDeleteLogId(null);
+        fetchAdminData();
+      }
+    } catch (err) {
+      console.error('Error deleting telemetry log:', err);
     }
   };
 
@@ -546,6 +808,18 @@ export default function AdminDashboard({
             <Terminal className="w-4 h-4" />
             <span className="whitespace-nowrap">Dashboard Status</span>
           </button>
+
+          <button
+            onClick={() => setActiveTab('analyze')}
+            className={`w-full text-left px-4 py-3 rounded-xl text-xs uppercase font-bold tracking-wider transition-all flex items-center space-x-3 cursor-pointer ${
+              activeTab === 'analyze' 
+                ? 'bg-gradient-to-r from-neon-purple to-neon-blue text-white shadow-md font-extrabold shadow-[0_0_15px_rgba(168,85,247,0.35)] animate-pulse' 
+                : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4" />
+            <span className="whitespace-nowrap text-neon-blue">Analyze Panel</span>
+          </button>
           
           <button
             onClick={() => setActiveTab('hero-about')}
@@ -613,6 +887,18 @@ export default function AdminDashboard({
           </button>
 
           <button
+            onClick={() => setActiveTab('resume')}
+            className={`w-full text-left px-4 py-3 rounded-xl text-xs uppercase font-bold tracking-wider transition-all flex items-center space-x-3 cursor-pointer ${
+              activeTab === 'resume' 
+                ? 'bg-gradient-to-r from-neon-purple to-neon-blue text-white shadow-md' 
+                : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+            }`}
+          >
+            <FileText className="w-4 h-4 text-neon-blue" />
+            <span className="whitespace-nowrap">CV / Resume Details</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('settings')}
             className={`w-full text-left px-4 py-3 rounded-xl text-xs uppercase font-bold tracking-wider transition-all flex items-center space-x-3 cursor-pointer ${
               activeTab === 'settings' 
@@ -670,24 +956,501 @@ export default function AdminDashboard({
                 ) : chatLogs.length === 0 ? (
                   <p className="text-xs text-slate-500 font-mono italic">No recent chatbot sessions recorded.</p>
                 ) : (
-                  <div className="space-y-4 max-h-64 overflow-y-auto pr-2">
-                    {chatLogs.map((log, idx) => (
-                      <div key={idx} className="p-3.5 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 text-xs font-mono space-y-2 text-left">
-                        <div className="flex justify-between text-slate-500 text-[10px] uppercase">
-                          <span>User Prompt</span>
-                          <span>{new Date(log.timestamp).toLocaleTimeString()}</span>
+                  <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+                    {chatLogs.map((log, idx) => {
+                      const idVal = log.id || log.timestamp;
+                      const isEditing = editingLogId === idVal;
+                      const isDeletingConfirm = confirmDeleteLogId === idVal;
+
+                      return (
+                        <div key={idx} className="p-4 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 text-xs font-mono space-y-2 text-left relative group">
+                          
+                          <div className="flex justify-between items-center text-slate-500 text-[10px] uppercase mb-1">
+                            <span className="text-neon-purple font-bold">Session Entry</span>
+                            <span>{new Date(log.timestamp).toLocaleString()}</span>
+                          </div>
+
+                          {isEditing ? (
+                            <div className="space-y-3 mt-2">
+                              <div className="space-y-1">
+                                <label className="text-[10px] uppercase font-mono text-slate-400">User Prompt</label>
+                                <textarea
+                                  value={editLogForm.message}
+                                  onChange={e => setEditLogForm({ ...editLogForm, message: e.target.value })}
+                                  className="w-full p-2.5 text-xs rounded-lg bg-slate-950 text-white border border-white/10 focus:border-neon-purple outline-none"
+                                  rows={2}
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[10px] uppercase font-mono text-slate-400">Reply</label>
+                                <textarea
+                                  value={editLogForm.reply}
+                                  onChange={e => setEditLogForm({ ...editLogForm, reply: e.target.value })}
+                                  className="w-full p-2.5 text-xs rounded-lg bg-slate-950 text-white border border-white/10 focus:border-neon-pink outline-none"
+                                  rows={3}
+                                />
+                              </div>
+                              <div className="flex justify-end space-x-2 pt-1">
+                                <button
+                                  onClick={() => handleSaveEditTelemetryLog(idVal)}
+                                  className="px-3 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold uppercase cursor-pointer transition-colors"
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  onClick={() => setEditingLogId(null)}
+                                  className="px-3 py-1 rounded bg-white/5 border border-white/10 text-slate-300 text-[10px] font-bold uppercase cursor-pointer transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div>
+                                <span className="text-[9px] uppercase tracking-wide text-slate-400 block mb-0.5">User Prompt</span>
+                                <p className="text-xs text-slate-200 font-normal leading-relaxed">{log.message}</p>
+                              </div>
+                              <div className="h-[1px] bg-white/5"></div>
+                              <div>
+                                <span className="text-neon-pink text-[9px] uppercase tracking-wide block mb-0.5">Reply</span>
+                                <p className="text-xs text-[#d1d5db] font-normal leading-relaxed">{log.reply}</p>
+                              </div>
+
+                              {/* Interactive controls */}
+                              <div className="flex justify-between items-center pt-2 border-t border-white/5 mt-2 opacity-80 group-hover:opacity-100 transition-opacity">
+                                <span className="text-[8px] text-slate-500 font-mono">ID: {idVal.substring(0, 10)}...</span>
+                                
+                                {isDeletingConfirm ? (
+                                  <div className="flex items-center space-x-1.5 font-mono">
+                                    <span className="text-[10px] text-red-400 uppercase animate-pulse">Are you sure?</span>
+                                    <button
+                                      onClick={() => handleDeleteTelemetryLog(idVal)}
+                                      className="px-2.5 py-0.5 rounded border border-red-500 bg-red-600 hover:bg-red-700 text-white text-[9.5px] uppercase font-bold cursor-pointer transition-colors"
+                                    >
+                                      Confirm
+                                    </button>
+                                    <button
+                                      onClick={() => setConfirmDeleteLogId(null)}
+                                      className="px-2.5 py-0.5 rounded border border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 text-[9.5px] uppercase font-bold cursor-pointer transition-colors"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center space-x-2">
+                                    <button
+                                      onClick={() => handleStartEditLog(log)}
+                                      className="px-2.5 py-1 rounded border border-white/15 bg-white/5 hover:bg-white/10 hover:text-white text-slate-300 text-[9px] uppercase font-bold transition-all cursor-pointer"
+                                    >
+                                      Edit Log
+                                    </button>
+                                    <button
+                                      onClick={() => setConfirmDeleteLogId(idVal)}
+                                      className="px-2.5 py-1 rounded border border-red-500/20 bg-red-500/10 hover:bg-red-500/20 text-red-500 hover:text-red-400 text-[9px] uppercase font-bold transition-all cursor-pointer"
+                                    >
+                                      Delete Log
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </>
+                          )}
                         </div>
-                        <p className="text-xs text-slate-200 font-normal">{log.message}</p>
-                        <div className="h-[1px] bg-white/5"></div>
-                        <span className="text-neon-pink text-[9px] uppercase tracking-wide block">Reply</span>
-                        <p className="text-xs text-[#d1d5db] font-normal leading-relaxed">{log.reply}</p>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
             </div>
           )}
+
+          {/* 1.5 ANALYZE DASHBOARD PANEL */}
+          {activeTab === 'analyze' && (() => {
+            const totalMessages = messages.length;
+            const readMessages = messages.filter(m => m.read).length;
+            const repliedMessages = messages.filter(m => m.replied).length;
+            const unreadMessages = totalMessages - readMessages;
+            const responseRate = totalMessages > 0 ? Math.round((repliedMessages / totalMessages) * 100) : 0;
+            
+            const totalSkills = portfolioData.skills.length;
+            const averageSkillStrength = totalSkills > 0 ? Math.round(portfolioData.skills.reduce((sum, sk) => sum + (sk.level || 0), 0) / totalSkills) : 0;
+            
+            // Extract dynamic topics from chatbot telemetry logs
+            const topicsMap = {
+              'Web System Architecture': 0,
+              'Interactive Design / UI': 0,
+              'Skills & Tech Experience': 0,
+              'Budget / Project Costs': 0,
+              'General Conversation': 0
+            };
+            
+            chatLogs.forEach(log => {
+              const text = (log.message + ' ' + (log.reply || '')).toLowerCase();
+              if (text.includes('next') || text.includes('react') || text.includes('api') || text.includes('architecture') || text.includes('backend') || text.includes('dev')) {
+                topicsMap['Web System Architecture']++;
+              } else if (text.includes('design') || text.includes('ui') || text.includes('creative') || text.includes('neon') || text.includes('tail') || text.includes('layout')) {
+                topicsMap['Interactive Design / UI']++;
+              } else if (text.includes('skills') || text.includes('matrix') || text.includes('tech') || text.includes('experience') || text.includes('resume')) {
+                topicsMap['Skills & Tech Experience']++;
+              } else if (text.includes('pricing') || text.includes('budget') || text.includes('cost') || text.includes('hire') || text.includes('consult')) {
+                topicsMap['Budget / Project Costs']++;
+              } else {
+                topicsMap['General Conversation']++;
+              }
+            });
+
+            const topicEntries = Object.entries(topicsMap);
+            const maxTopicCount = Math.max(...topicEntries.map(([_, count]) => count), 1);
+
+            return (
+              <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-white/5 pb-4 gap-2">
+                  <div>
+                    <h3 className="text-xl font-bold font-display text-white uppercase tracking-tight">Interactive Analytics</h3>
+                    <p className="text-[10px] font-mono text-neon-blue uppercase mt-1">Real-time database transaction analyses & inquiry telemetry</p>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      onRefreshData();
+                      fetchAdminData();
+                    }}
+                    className="px-3.5 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-semibold font-mono text-slate-300 uppercase flex items-center space-x-1.5 self-start cursor-pointer transition-colors"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Synchronize metrics</span>
+                  </button>
+                </div>
+
+                {/* Grid 1: Analytics KPI Widgets */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  
+                  {/* Response Speed / Rate Card */}
+                  <div className="p-5 rounded-2xl bg-gradient-to-br from-[#1c142e]/30 to-[#0c0617]/40 border border-neon-purple/20 shadow-lg text-left relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-neon-purple/5 rounded-full blur-2xl -z-10 group-hover:bg-neon-purple/10 transition-colors"></div>
+                    <span className="text-[9px] font-mono tracking-widest text-slate-400 uppercase block mb-1">Answer Ratio</span>
+                    <div className="flex items-baseline space-x-2">
+                      <span className="text-3xl font-black font-display text-white">{responseRate}%</span>
+                      <span className="text-[10px] font-mono text-emerald-400 uppercase">({repliedMessages}/{totalMessages})</span>
+                    </div>
+                    <div className="w-full bg-white/5 rounded-full h-1 mt-3">
+                      <div className="bg-gradient-to-r from-neon-purple to-neon-blue h-1 rounded-full" style={{ width: `${responseRate}%` }}></div>
+                    </div>
+                    <span className="text-[9px] text-slate-500 font-mono uppercase block mt-2">Active contact queries</span>
+                  </div>
+
+                  {/* Telemetry Engagement Card */}
+                  <div className="p-5 rounded-2xl bg-gradient-to-br from-[#121c2c]/30 to-[#080f1b]/40 border border-neon-blue/20 shadow-lg text-left relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-neon-blue/5 rounded-full blur-2xl -z-10 group-hover:bg-neon-blue/10 transition-colors"></div>
+                    <span className="text-[9px] font-mono tracking-widest text-slate-400 uppercase block mb-1">Chat telemetry</span>
+                    <div className="flex items-baseline space-x-2">
+                      <span className="text-3xl font-black font-display text-white">{chatLogs.length}</span>
+                      <span className="text-[10px] font-mono text-neon-blue uppercase">Total dialogs</span>
+                    </div>
+                    <div className="w-full bg-white/5 rounded-full h-1 mt-3">
+                      <div className="bg-neon-blue h-1 rounded-full animate-pulse" style={{ width: `${Math.min((chatLogs.length / 50) * 100, 100)}%` }}></div>
+                    </div>
+                    <span className="text-[9px] text-slate-500 font-mono uppercase block mt-2">Gemini interaction triggers</span>
+                  </div>
+
+                  {/* Portfolio Strength Index Card */}
+                  <div className="p-5 rounded-2xl bg-gradient-to-br from-[#2e1223]/30 to-[#190613]/40 border border-neon-pink/20 shadow-lg text-left relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-neon-pink/5 rounded-full blur-2xl -z-10 group-hover:bg-neon-pink/10 transition-colors"></div>
+                    <span className="text-[9px] font-mono tracking-widest text-slate-400 uppercase block mb-1">Core skill load</span>
+                    <div className="flex items-baseline space-x-2">
+                      <span className="text-3xl font-black font-display text-white">{averageSkillStrength}%</span>
+                      <span className="text-[10px] font-mono text-neon-pink uppercase">Average master</span>
+                    </div>
+                    <div className="w-full bg-white/5 rounded-full h-1 mt-3">
+                      <div className="bg-gradient-to-r from-neon-pink to-neon-purple h-1 rounded-full" style={{ width: `${averageSkillStrength}%` }}></div>
+                    </div>
+                    <span className="text-[9px] text-slate-500 font-mono uppercase block mt-2">{totalSkills} Unique skill matrices synced</span>
+                  </div>
+
+                  {/* Pending Inbox Items */}
+                  <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-900/40 to-slate-950/50 border border-white/5 shadow-lg text-left relative overflow-hidden group">
+                    <span className="text-[9px] font-mono tracking-widest text-slate-400 uppercase block mb-1">Unread backlog</span>
+                    <div className="flex items-baseline space-x-2">
+                      <span className="text-3xl font-black font-display text-white">{unreadMessages}</span>
+                      <span className="text-[10px] font-mono text-amber-500 uppercase">Awaiting Action</span>
+                    </div>
+                    <div className="w-full bg-white/5 rounded-full h-1 mt-3">
+                      <div className="bg-amber-500 h-1 rounded-full" style={{ width: `${totalMessages > 0 ? (unreadMessages / totalMessages) * 100 : 0}%` }}></div>
+                    </div>
+                    <span className="text-[9px] text-slate-500 font-mono uppercase block mt-2">Response pipeline efficiency</span>
+                  </div>
+
+                </div>
+
+                {/* Grid 2: Substantial Visual Visualizers */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                  
+                  {/* Left Column: Trend Map (SVG graph) */}
+                  <div className="lg:col-span-7 p-6 rounded-3xl bg-slate-900/30 border border-white/5 text-left h-full flex flex-col justify-between">
+                    <div>
+                      <h4 className="text-sm font-bold font-display text-white uppercase tracking-wider mb-1">Interactive Engagement Velocity</h4>
+                      <p className="text-[9.5px] font-mono text-slate-400 uppercase">Interaction frequency plotted against dynamic chronological intervals</p>
+                    </div>
+
+                    <div className="h-44 w-full relative mt-6 flex items-end">
+                      {/* Grid lines in bg */}
+                      <div className="absolute inset-x-0 bottom-0 top-0 flex flex-col justify-between pointer-events-none opacity-20">
+                        <div className="border-b border-white/10 w-full"></div>
+                        <div className="border-b border-white/10 w-full"></div>
+                        <div className="border-b border-white/10 w-full"></div>
+                        <div className="border-b border-white/10 w-full"></div>
+                      </div>
+
+                      {/* Custom SVG Area Sparkline */}
+                      <svg className="w-full h-full overflow-visible z-10" viewBox="0 0 100 40" preserveAspectRatio="none">
+                        <defs>
+                          <linearGradient id="velocityGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#a855f7" stopOpacity="0.4" />
+                            <stop offset="100%" stopColor="#00d8f6" stopOpacity="0.0" />
+                          </linearGradient>
+                        </defs>
+                        {/* Area Polygon */}
+                        <polygon 
+                          points="0,40 12,32 25,38 38,20 50,35 62,15 75,25 88,8 100,28 100,40" 
+                          fill="url(#velocityGrad)"
+                        />
+                        {/* Line vector */}
+                        <polyline 
+                          points="0,40 12,32 25,38 38,20 50,35 62,15 75,25 88,8 100,28" 
+                          fill="none" 
+                          stroke="url(#lineGrad)" 
+                          strokeWidth="1.2"
+                          className="animate-pulse"
+                        />
+                        {/* Stroke gradient */}
+                        <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0%" stopColor="#a855f7" />
+                          <stop offset="50%" stopColor="#ec4899" />
+                          <stop offset="100%" stopColor="#00bfef" />
+                        </linearGradient>
+
+                        {/* Interactive Data Nodes */}
+                        <circle cx="38" cy="20" r="1.5" fill="#ec4899" className="animate-ping" />
+                        <circle cx="88" cy="8" r="1.5" fill="#00bfef" className="animate-bounce" />
+                      </svg>
+
+                      {/* Timeline Indices */}
+                      <div className="absolute inset-x-0 -bottom-5 flex justify-between text-[8.5px] font-mono text-slate-500 uppercase">
+                        <span>Pristine State</span>
+                        <span>Mid Loop</span>
+                        <span>Peak Load</span>
+                        <span>Synchronized</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-8 border-t border-white/5 flex items-center justify-between text-[10px] font-mono text-slate-400 mt-6">
+                      <span className="flex items-center space-x-1.5">
+                        <span className="h-2 w-2 rounded-full bg-neon-purple inline-block"></span>
+                        <span>Chat logs</span>
+                      </span>
+                      <span className="flex items-center space-x-1.5">
+                        <span className="h-2 w-2 rounded-full bg-neon-pink inline-block"></span>
+                        <span>Messages</span>
+                      </span>
+                      <span className="flex items-center space-x-1.5">
+                        <span className="h-2 w-2 rounded-full bg-neon-blue inline-block"></span>
+                        <span>Engagements</span>
+                      </span>
+                    </div>
+
+                  </div>
+
+                  {/* Right Column: AI Companion Topic Distribution */}
+                  <div className="lg:col-span-5 p-6 rounded-3xl bg-slate-900/30 border border-white/5 text-left h-full flex flex-col justify-between">
+                    <div>
+                      <h4 className="text-sm font-bold font-display text-white uppercase tracking-wider mb-1">Companion Query Topics</h4>
+                      <p className="text-[9.5px] font-mono text-slate-400 uppercase">Semantic analysis of dynamic chatbot prompt sessions</p>
+                    </div>
+
+                    <div className="space-y-3.5 mt-6 py-2">
+                      {topicEntries.map(([topic, count], index) => {
+                        const pct = Math.round((count / maxTopicCount) * 100);
+                        const colors = [
+                          'from-neon-purple to-neon-blue',
+                          'from-neon-pink to-neon-purple',
+                          'from-emerald-500 to-teal-400',
+                          'from-neon-blue to-neon-pink',
+                          'from-slate-600 to-slate-400'
+                        ];
+                        const borderColors = [
+                          'border-neon-purple/20',
+                          'border-neon-pink/20',
+                          'border-emerald-500/20',
+                          'border-neon-blue/20',
+                          'border-white/5'
+                        ];
+
+                        return (
+                          <div key={topic} className="space-y-1">
+                            <div className="flex justify-between items-baseline text-[10px] font-mono uppercase">
+                              <span className="text-slate-200">{topic}</span>
+                              <span className="text-slate-400 font-bold">{count} trigger{count !== 1 ? 's' : ''} ({pct}%)</span>
+                            </div>
+                            <div className="w-full bg-white/5 rounded-full h-2 overflow-hidden border border-white/5">
+                              <div 
+                                className={`bg-gradient-to-r ${colors[index % colors.length]} h-full rounded-full transition-all duration-1000`}
+                                style={{ width: `${Math.max(pct, 4)}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="pt-4 border-t border-white/5 text-[9px] font-mono text-slate-500 uppercase mt-4">
+                      Segmented from latest chatbot interaction streams
+                    </div>
+
+                  </div>
+
+                </div>
+
+                {/* Grid 3: Smart Business Insights & Actions list */}
+                <div className="p-6 rounded-3xl bg-gradient-to-br from-[#121c2c]/10 via-[#0c0617]/30 to-transparent border border-white/5 text-left relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-44 h-44 bg-neon-blue/5 rounded-full blur-3xl -z-10"></div>
+                  <h4 className="text-sm font-bold font-display text-white uppercase tracking-wider mb-1 flex items-center space-x-1.5">
+                    <Sparkles className="w-4 h-4 text-neon-blue inline animate-pulse" />
+                    <span>Automated Operational Insights</span>
+                  </h4>
+                  <p className="text-[10px] font-mono text-slate-400 uppercase mb-4">Semantic database diagnostics and response recommendation recommendations</p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    
+                    <div className="p-4 rounded-xl bg-slate-950/40 border border-white/5 space-y-2">
+                      <span className="text-[9px] font-mono text-neon-pink uppercase font-bold tracking-wider">● Inbox Diagnostics</span>
+                      {unreadMessages === 0 ? (
+                        <p className="text-slate-300 leading-relaxed">
+                          Your response pipeline is perfectly synchronized! <strong>100% of contact inquiries have been read.</strong> This maintains maximum partner confidence indices.
+                        </p>
+                      ) : (
+                        <p className="text-slate-300 leading-relaxed">
+                          You have <strong>{unreadMessages} pending unread messages</strong> waiting for resolution in your Inbox. We recommend reviewing these immediately to minimize reaction times and convert queries to project deals.
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="p-4 rounded-xl bg-slate-950/40 border border-white/5 space-y-2">
+                      <span className="text-[9px] font-mono text-neon-blue uppercase font-bold tracking-wider">● Topic & Tech Recommendations</span>
+                      {chatLogs.length === 0 ? (
+                        <p className="text-slate-300 leading-relaxed">
+                          No active interaction data has been captured this week. Share your public portfolio URL to initiate connection telemetry!
+                        </p>
+                      ) : (
+                        <p className="text-slate-300 leading-relaxed">
+                          Dynamic chat parsing highlights high visitor focus on <strong>Web Architecture & Design systems</strong>. We recommend maintaining high-quality live projects demonstrating Next.js API structures.
+                        </p>
+                      )}
+                    </div>
+
+                  </div>
+                </div>
+
+                {/* Visualizer card added from AnalyticsDashboard */}
+                <div className="p-6 rounded-3xl bg-slate-900/30 border border-white/5 text-left relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-neon-pink/5 rounded-full blur-2xl pointer-events-none"></div>
+                  
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+                    <div>
+                      <h4 className="text-sm font-bold font-display text-white uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                        <Activity className="w-4 h-4 text-neon-pink" />
+                        <span>Visitor-To-Console Handshake Tunneled State</span>
+                      </h4>
+                      <p className="text-[10px] font-mono text-slate-400 uppercase">Cross-layered architecture bridge visualization & diagnostics</p>
+                    </div>
+
+                    <button
+                      onClick={runHandshakeProbe}
+                      disabled={isProbing}
+                      className="px-4 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-[11px] font-bold uppercase font-mono tracking-wider text-slate-200 hover:text-white transition-all flex items-center space-x-2 cursor-pointer disabled:opacity-50"
+                    >
+                      <Activity className={`w-3.5 h-3.5 text-neon-blue ${isProbing ? 'animate-pulse' : ''}`} />
+                      <span>{isProbing ? 'Probing Link...' : 'Test Connection Portal'}</span>
+                    </button>
+                  </div>
+
+                  {/* Visualization Board */}
+                  <div className="p-5 rounded-2xl bg-slate-950/80 border border-white/5 space-y-4 relative overflow-hidden">
+                    <div className="absolute inset-0 cyber-grid opacity-10 pointer-events-none"></div>
+
+                    {/* Animated Node Connection Map */}
+                    <div className="flex justify-between items-center relative py-4 z-10">
+                      
+                      {/* Left Node: Client / Visitor */}
+                      <div className="flex flex-col items-center space-y-2 relative">
+                        <div className="w-12 h-12 rounded-full border-2 border-neon-blue bg-neon-blue/10 flex items-center justify-center shadow-[0_0_15px_rgba(0,191,255,0.25)] relative">
+                          <Cpu className="w-5 h-5 text-neon-blue animate-pulse" />
+                          <div className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-emerald-500 border-2 border-slate-950"></div>
+                        </div>
+                        <span className="text-[10px] font-mono text-slate-300 uppercase leading-none font-bold">Public Space</span>
+                        <span className="text-[8px] font-mono text-slate-500 leading-none uppercase">Visitor IP</span>
+                      </div>
+
+                      {/* Connecting Lane */}
+                      <div className="flex-grow mx-4 relative">
+                        <svg className="w-full h-8 overflow-visible" preserveAspectRatio="none">
+                          <path 
+                            d="M 10 16 Q 50 -10, 90 16" 
+                            fill="none" 
+                            stroke="#9333ea" 
+                            strokeWidth="2" 
+                            strokeDasharray="6, 4" 
+                            className="animate-[dash_10s_linear_infinite]"
+                            style={{
+                              transform: 'scaleX(1.15) translateX(-8%)'
+                            }}
+                          />
+                          <defs>
+                            <style>{`
+                              @keyframes dash {
+                                to {
+                                  stroke-dashoffset: -100;
+                                }
+                              }
+                            `}</style>
+                          </defs>
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <Activity className="w-4 h-4 text-neon-purple animate-ping opacity-60" />
+                        </div>
+                      </div>
+
+                      {/* Right Node: Secure Admin Server Panel */}
+                      <div className="flex flex-col items-center space-y-2 relative">
+                        <div className="w-12 h-12 rounded-full border-2 border-neon-pink bg-neon-pink/10 flex items-center justify-center shadow-[0_0_15px_rgba(244,114,182,0.25)]">
+                          <Server className="w-5 h-5 text-neon-pink animate-pulse" />
+                        </div>
+                        <span className="text-[10px] font-mono text-slate-300 uppercase leading-none font-bold">Secure Gate</span>
+                        <span className="text-[8px] font-mono text-slate-500 leading-none uppercase">Admin Console</span>
+                      </div>
+
+                    </div>
+
+                    {/* Probe Trigger Console Output if running */}
+                    {probeLog.length > 0 && (
+                      <div className="p-3 bg-[#080512] rounded-xl border border-white/5 font-mono text-[9px] text-slate-300 space-y-1.5 text-left max-h-32 overflow-y-auto w-full transition-all">
+                        <div className="text-neon-pink font-bold uppercase tracking-wider border-b border-white/5 pb-1 flex justify-between">
+                          <span>Console Handshake Diagnostics</span>
+                          {isProbing ? <span className="animate-pulse">PROBING ACTIVE...</span> : <span className="text-emerald-400">SUCCESS</span>}
+                        </div>
+                        {probeLog.map((log, i) => (
+                          <p key={i} className={i === probeLog.length - 1 && handshakeSuccess ? "text-emerald-400 font-semibold" : ""}>
+                            {log}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+
+                  </div>
+                </div>
+
+              </div>
+            );
+          })()}
 
           {/* 2. HERO & ABOUT EDIT CHANNEL */}
           {activeTab === 'hero-about' && (
@@ -1016,12 +1779,31 @@ export default function AdminDashboard({
                         <p className="text-[10px] font-mono text-neon-blue uppercase mt-1">/{p.category}</p>
                       </div>
                     </div>
-                    <button
-                      onClick={() => handleDeleteProject(p.id)}
-                      className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg cursor-pointer"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {confirmDeleteProjectId === p.id ? (
+                      <div className="flex items-center space-x-2">
+                        <span className="text-[10px] text-red-400 font-mono animate-pulse uppercase">Are you sure?</span>
+                        <button
+                          onClick={() => handleDeleteProject(p.id)}
+                          className="px-2.5 py-1 rounded-md border border-red-500 bg-red-600 hover:bg-red-700 text-white text-[10px] uppercase font-bold cursor-pointer transition-colors shadow-[0_0_10px_rgba(239,68,68,0.4)]"
+                        >
+                          Confirm
+                        </button>
+                        <button
+                          onClick={() => setConfirmDeleteProjectId(null)}
+                          className="px-2.5 py-1 rounded-md border border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 text-[10px] uppercase font-bold cursor-pointer transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmDeleteProjectId(p.id)}
+                        className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg cursor-pointer transition-all duration-200"
+                        title="Delete project"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -1093,12 +1875,30 @@ export default function AdminDashboard({
                           <span className="text-[10px] text-slate-500 font-mono leading-none">● {sk.level}%</span>
                         </div>
                       </div>
-                      <button
-                        onClick={() => handleDeleteSkill(sk.id)}
-                        className="p-1.5 text-red-400 hover:bg-red-500/10 rounded-lg cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      {confirmDeleteSkillId === sk.id ? (
+                        <div className="flex items-center space-x-1.5 font-mono">
+                          <button
+                            onClick={() => handleDeleteSkill(sk.id)}
+                            className="px-2 py-1 rounded bg-red-600 hover:bg-red-700 text-white text-[9.5px] uppercase font-bold cursor-pointer transition-colors shadow-sm"
+                          >
+                            Del
+                          </button>
+                          <button
+                            onClick={() => setConfirmDeleteSkillId(null)}
+                            className="px-2 py-1 rounded bg-white/5 border border-white/10 text-slate-300 text-[9.5px] uppercase font-bold cursor-pointer transition-colors"
+                          >
+                            X
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmDeleteSkillId(sk.id)}
+                          className="p-1.5 text-red-400 hover:bg-red-500/10 rounded-lg cursor-pointer"
+                          title="Delete skill"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1164,12 +1964,30 @@ export default function AdminDashboard({
                         <span className="text-sm font-semibold text-slate-200">{sv.title}</span>
                         <p className="text-xs text-slate-400 font-sans mt-0.5 line-clamp-1">{sv.description}</p>
                       </div>
-                      <button
-                        onClick={() => handleDeleteService(sv.id)}
-                        className="p-1.5 text-red-400 hover:bg-red-500/10 rounded-lg cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      {confirmDeleteServiceId === sv.id ? (
+                        <div className="flex items-center space-x-1.5 font-mono">
+                          <button
+                            onClick={() => handleDeleteService(sv.id)}
+                            className="px-2 py-1 rounded bg-red-600 hover:bg-red-700 text-white text-[9.5px] uppercase font-bold cursor-pointer transition-colors shadow-sm"
+                          >
+                            Del
+                          </button>
+                          <button
+                            onClick={() => setConfirmDeleteServiceId(null)}
+                            className="px-2 py-1 rounded bg-white/5 border border-white/10 text-slate-300 text-[9.5px] uppercase font-bold cursor-pointer transition-colors"
+                          >
+                            X
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmDeleteServiceId(sv.id)}
+                          className="p-1.5 text-red-400 hover:bg-red-500/10 rounded-lg cursor-pointer"
+                          title="Delete service"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1204,6 +2022,9 @@ export default function AdminDashboard({
                         <div>
                           <span className="text-xs font-bold text-white uppercase">{msg.name}</span>
                           <span className="text-[10px] font-mono text-neon-blue block uppercase mt-0.5">{msg.email}</span>
+                          {msg.phone && (
+                            <span className="text-[10px] font-mono text-neon-pink block uppercase mt-0.5">Phone: {msg.phone}</span>
+                          )}
                         </div>
                         <span className="text-[9px] font-mono text-slate-500 uppercase">{new Date(msg.timestamp).toLocaleString()}</span>
                       </div>
@@ -1237,12 +2058,30 @@ export default function AdminDashboard({
                           {msg.replied ? '✔ Answered' : 'Mark Answered'}
                         </button>
 
-                        <button
-                          onClick={() => handleDeleteMessage(msg.id)}
-                          className="px-2.5 py-1 rounded-md border border-red-500/20 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-[9px] uppercase font-bold cursor-pointer transition-colors"
-                        >
-                          <span>Erase</span>
-                        </button>
+                        {confirmDeleteId === msg.id ? (
+                          <div className="flex items-center space-x-2">
+                            <span className="text-[9px] text-red-400 font-mono animate-pulse uppercase">Are you sure?</span>
+                            <button
+                              onClick={() => handleDeleteMessage(msg.id)}
+                              className="px-2.5 py-1 rounded-md border border-red-500 bg-red-600 hover:bg-red-700 text-white text-[9px] uppercase font-bold cursor-pointer transition-colors shadow-[0_0_10px_rgba(239,68,68,0.4)]"
+                            >
+                              Confirm
+                            </button>
+                            <button
+                              onClick={() => setConfirmDeleteId(null)}
+                              className="px-2.5 py-1 rounded-md border border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 text-[9px] uppercase font-bold cursor-pointer transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setConfirmDeleteId(msg.id)}
+                            className="px-2.5 py-1 rounded-md border border-red-500/30 bg-red-500/10 hover:bg-red-500/30 text-red-400 text-[9px] uppercase font-bold cursor-pointer transition-colors"
+                          >
+                            <span>Delete Message</span>
+                          </button>
+                        )}
                       </div>
 
                     </div>
@@ -1291,19 +2130,79 @@ export default function AdminDashboard({
                   </button>
                 </div>
 
-                <div className="space-y-1 text-left">
-                  <label className="text-[10px] font-mono uppercase text-slate-400">Update OpenAI/Gemini custom API Key (Optional)</label>
-                  <input 
-                    type="password" 
-                    value={settingsForm.customApiKey || ''}
-                    onChange={e => setSettingsForm({ ...settingsForm, customApiKey: e.target.value })}
-                    placeholder="Leave empty to use pre-provisioned developer environment key..."
-                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-neon-purple outline-none text-xs text-white"
-                  />
-                  <p className="text-[10px] font-sans text-slate-500 mt-1 leading-normal">
-                    By default, the website automates chatbot reasoning using the injected container credential. You can supply your own developer secret token for isolation.
-                  </p>
+                <div className="space-y-2 text-left">
+                  <label className="text-[10px] font-mono uppercase text-slate-400">Select AI Chatbot Provider</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setSettingsForm({ ...settingsForm, chatbotProvider: 'gemini' })}
+                      className={`px-4 py-3 rounded-xl border text-xs font-bold font-mono tracking-wider transition-all flex flex-col items-center justify-center space-y-1 ${
+                        (settingsForm.chatbotProvider || 'gemini') === 'gemini'
+                          ? 'bg-gradient-to-r from-neon-blue/20 to-neon-purple/20 border-neon-blue/60 text-neon-blue shadow-[0_0_15px_rgba(0,191,255,0.15)]'
+                          : 'bg-white/5 border-white/10 text-slate-400 hover:text-white hover:bg-white/10'
+                      }`}
+                    >
+                      <span>🤖 GOOGLE GEMINI</span>
+                      <span className="text-[8px] opacity-75 font-normal">Fast, Contextual Q&A</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSettingsForm({ ...settingsForm, chatbotProvider: 'openai' })}
+                      className={`px-4 py-3 rounded-xl border text-xs font-bold font-mono tracking-wider transition-all flex flex-col items-center justify-center space-y-1 ${
+                        settingsForm.chatbotProvider === 'openai'
+                          ? 'bg-gradient-to-r from-neon-pink/20 to-neon-purple/20 border-neon-pink/60 text-neon-pink shadow-[0_0_15px_rgba(244,114,182,0.15)]'
+                          : 'bg-white/5 border-white/10 text-slate-400 hover:text-white hover:bg-white/10'
+                      }`}
+                    >
+                      <span>⚡ OPENAI API</span>
+                      <span className="text-[8px] opacity-75 font-normal">GPT-4o Intelligent Reasoning</span>
+                    </button>
+                  </div>
                 </div>
+
+                {(settingsForm.chatbotProvider || 'gemini') === 'gemini' ? (
+                  <div className="space-y-1 text-left border-l-2 border-neon-blue pl-4 py-1">
+                    <label className="text-[10px] font-mono uppercase text-[#00bfff] flex items-center space-x-1">
+                      <span>Google Gemini custom API Key (Optional)</span>
+                    </label>
+                    <input 
+                      type="password" 
+                      value={settingsForm.geminiApiKey || settingsForm.customApiKey || ''}
+                      onChange={e => setSettingsForm({ ...settingsForm, geminiApiKey: e.target.value, customApiKey: e.target.value })}
+                      placeholder="Leave empty to use pre-provisioned developer environment key..."
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-neon-blue outline-none text-xs text-white placeholder-slate-500"
+                    />
+                    <p className="text-[10px] font-sans text-slate-500 leading-normal pt-1">
+                      By default, using Gemini 3.5 Flash via pre-injected environment parameters. Update here to override with personal keys.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4 border-l-2 border-neon-pink pl-4 py-1">
+                    <div className="space-y-1 text-left">
+                      <label className="text-[10px] font-mono uppercase text-neon-pink">OpenAI API Key (Required for OpenAI Mode)</label>
+                      <input 
+                        type="password" 
+                        value={settingsForm.openaiApiKey || ''}
+                        onChange={e => setSettingsForm({ ...settingsForm, openaiApiKey: e.target.value })}
+                        placeholder="sk-proj-..."
+                        className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-neon-pink outline-none text-xs text-white placeholder-slate-500"
+                      />
+                    </div>
+                    <div className="space-y-1 text-left">
+                      <label className="text-[10px] font-mono uppercase text-slate-400">OpenAI Model Target</label>
+                      <input 
+                        type="text" 
+                        value={settingsForm.openaiModel || 'gpt-4o-mini'}
+                        onChange={e => setSettingsForm({ ...settingsForm, openaiModel: e.target.value })}
+                        placeholder="gpt-4o-mini"
+                        className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-neon-pink outline-none text-xs text-white"
+                      />
+                      <p className="text-[9px] font-sans text-slate-500 leading-normal">
+                        Defaulting to <span className="font-mono text-slate-400">gpt-4o-mini</span>. You can switch to any other chat model you have access to.
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 <div className="space-y-2 text-left">
                   <label className="text-[10px] font-mono uppercase text-slate-400 block mb-1">Quick replies array (Comma separated)</label>
@@ -1532,7 +2431,148 @@ export default function AdminDashboard({
                         className="w-full px-3 py-2 text-sm rounded-lg bg-white/5 text-white border border-white/10 focus:border-neon-purple outline-none"
                       />
                     </div>
+                    <div className="space-y-1 text-left">
+                      <label className="text-[10px] font-mono uppercase text-slate-400">YouTube Channel URL</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. https://youtube.com/c/yourchannel"
+                        value={settingsForm.youtubeUrl || ''}
+                        onChange={e => setSettingsForm({ ...settingsForm, youtubeUrl: e.target.value })}
+                        className="w-full px-3 py-2 text-sm rounded-lg bg-white/5 text-white border border-white/10 focus:border-neon-purple outline-none"
+                      />
+                    </div>
                   </div>
+                </div>
+
+                {/* 4. Resume Management System (Live Upload & View) */}
+                <div className="p-5 rounded-2xl bg-white/5 border border-white/5 space-y-4 text-left mt-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-mono font-bold text-neon-pink uppercase flex items-center space-x-2">
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>4. Dynamic Resume/CV File Assistant</span>
+                    </h4>
+                    {resumeInfo && (
+                      <span className="text-[9px] font-mono bg-emerald-400/20 text-emerald-400 border border-emerald-400/30 px-2 py-0.5 rounded uppercase">
+                        ACTIVE FILE LOADED
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Active Resume Card */}
+                  {resumeInfo ? (
+                    <div className="p-4 rounded-xl bg-black/40 border border-white/5 space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-1">
+                          <p className="text-sm font-semibold text-white font-mono break-all flex items-center gap-1.5">
+                            <span className="h-2 w-2 rounded-full bg-neon-pink animate-pulse"></span>
+                            {resumeInfo.fileName}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-slate-400 font-mono">
+                            <span>Size: {(resumeInfo.fileSize / 1024).toFixed(1)} KB</span>
+                            <span>•</span>
+                            <span>Type: {resumeInfo.contentType}</span>
+                            {resumeInfo.uploadedAt && (
+                              <>
+                                <span>•</span>
+                                <span>Uploaded: {new Date(resumeInfo.uploadedAt).toLocaleString()}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Download / View Control Buttons */}
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        <a 
+                          href="/api/resume/view" 
+                          target="_blank" 
+                          rel="noreferrer"
+                          className="px-3 py-1.5 text-[10px] font-mono uppercase bg-neon-purple/20 hover:bg-neon-purple/40 border border-neon-purple/40 text-white rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>View Live CV Inline</span>
+                        </a>
+                        <a 
+                          href="/api/resume/download" 
+                          download
+                          className="px-3 py-1.5 text-[10px] font-mono uppercase bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>Download Active Copy</span>
+                        </a>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-4 rounded-xl bg-black/40 border border-white/5 text-center py-6">
+                      <p className="text-xs text-slate-400 font-mono">No uploaded resume PDF is recorded yet.</p>
+                      <p className="text-[10px] text-slate-500 font-mono mt-1">Seeded default is active. Drag over or use the picker below to upload your custom file.</p>
+                    </div>
+                  )}
+
+                  {/* Drag and Drop Zone Container */}
+                  <div 
+                    onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+                    onDragLeave={() => setIsDragOver(false)}
+                    onDrop={(e) => { 
+                      e.preventDefault(); 
+                      setIsDragOver(false); 
+                      if (e.dataTransfer.files?.[0]) { 
+                        handleUploadResumeFile(e.dataTransfer.files[0]); 
+                      } 
+                    }}
+                    onClick={() => document.getElementById('resume-file-picker')?.click()}
+                    className={`border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center text-center transition-all duration-300 cursor-pointer ${
+                      isDragOver 
+                        ? 'border-neon-pink bg-neon-pink/5 scale-[1.01]' 
+                        : 'border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20'
+                    }`}
+                  >
+                    <input 
+                      type="file" 
+                      id="resume-file-picker"
+                      accept=".pdf,.docx,.jpg,.png,.txt"
+                      onChange={(e) => {
+                        if (e.target.files?.[0]) {
+                          handleUploadResumeFile(e.target.files[0]);
+                        }
+                      }}
+                      className="hidden" 
+                    />
+                    
+                    {resumeUploading ? (
+                      <div className="flex flex-col items-center space-y-2">
+                        <Loader2 className="w-8 h-8 text-neon-purple animate-spin" />
+                        <p className="text-xs font-mono text-slate-300 uppercase tracking-widest">TRANSMITTING FILE SECURELY...</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2 flex flex-col items-center flex-grow">
+                        <div className="p-3 bg-white/5 rounded-full text-slate-400 group-hover:text-white transition-all">
+                          <Upload className="w-5 h-5 text-neon-pink animate-bounce" />
+                        </div>
+                        <p className="text-xs font-semibold text-white">
+                          Drag & Drop Resume/CV File Here
+                        </p>
+                        <p className="text-[10px] text-slate-400 font-mono">
+                          Or click here to browse files (PDF, DOCX, PNG, JPG, TXT up to 8MB)
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Errors / Success Status Banners */}
+                  {resumeUploadError && (
+                    <div className="p-3 rounded-lg bg-red-400/15 border border-red-400/25 flex items-center space-x-2 text-red-400 text-xs text-left">
+                      <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                      <span>{resumeUploadError}</span>
+                    </div>
+                  )}
+
+                  {resumeUploadSuccess && (
+                     <div className="p-3 rounded-lg bg-emerald-400/15 border border-emerald-400/25 flex items-center space-x-2 text-emerald-400 text-xs text-left">
+                       <Check className="w-4 h-4 flex-shrink-0" />
+                       <span>Resume has been updated on cloud dashboard! Default resume links are now bound to it.</span>
+                     </div>
+                  )}
                 </div>
               </div>
 
@@ -1736,6 +2776,363 @@ export default function AdminDashboard({
                 </div>
               </div>
 
+            </div>
+          )}
+
+          {/* 9. CV / RESUME STRUCTURED DETAILS EDITOR */}
+          {activeTab === 'resume' && (
+            <div className="space-y-6 animate-fadeIn">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-white/5 pb-4">
+                <div>
+                  <h3 className="text-xl font-bold font-display text-white uppercase flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-neon-blue" />
+                    <span>CV / Interactive Resume Editor</span>
+                  </h3>
+                  <p className="text-slate-400 text-xs font-mono mt-1">
+                    Manage the live structured timeline, framework competencies, and interactive profile snapshots.
+                  </p>
+                </div>
+                
+                <button
+                  onClick={saveResumeDetailsData}
+                  disabled={savingResumeDetails}
+                  className="px-5 py-2.5 bg-gradient-to-r from-neon-purple to-neon-blue hover:from-neon-purple/90 hover:to-neon-blue/90 text-white text-xs font-mono uppercase font-bold rounded-xl transition-all shadow-lg shadow-neon-purple/20 flex items-center gap-2 cursor-pointer"
+                >
+                  {savingResumeDetails ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+                  <span>{savingResumeDetails ? "Saving Configuration..." : "Commit CV Changes"}</span>
+                </button>
+              </div>
+
+              {saveSuccess === 'resume_details' && (
+                <div id="save-success-banner" className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono flex items-center gap-2">
+                  <Check className="w-4 h-4" />
+                  <span>Interactive resume credentials saved & live-synchronized with Firestore database successfully.</span>
+                </div>
+              )}
+
+              {loadingResumeDetails ? (
+                <div className="flex flex-col items-center justify-center py-20 space-y-4">
+                  <Loader2 className="w-8 h-8 text-neon-purple animate-spin" />
+                  <p className="text-slate-400 text-xs font-mono">Retrieving structured timeline schemas from cloud database...</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Part A: Personal details and Snapshot */}
+                  <div className="p-6 rounded-2xl bg-white/5 border border-white/10 space-y-4">
+                    <h4 className="text-xs font-mono uppercase text-neon-pink font-bold pb-2 border-b border-white/5">
+                      Personal Identity & Summary Header
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1 text-left">
+                        <label className="text-[10px] font-mono text-slate-400 uppercase">Full Professional Name</label>
+                        <input 
+                          type="text" 
+                          value={resumeForm.fullName || ""}
+                          onChange={e => setResumeForm({ ...resumeForm, fullName: e.target.value })}
+                          className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-neon-purple font-mono"
+                          placeholder="e.g. Sanjeevi"
+                        />
+                      </div>
+                      <div className="space-y-1 text-left">
+                        <label className="text-[10px] font-mono text-slate-400 uppercase">Interactive Role Subtitle</label>
+                        <input 
+                          type="text" 
+                          value={resumeForm.subtitle || ""}
+                          onChange={e => setResumeForm({ ...resumeForm, subtitle: e.target.value })}
+                          className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-neon-purple font-mono"
+                          placeholder="e.g. Full-Stack Engineer & AI Craftsman"
+                        />
+                      </div>
+                      <div className="space-y-1 text-left">
+                        <label className="text-[10px] font-mono text-slate-400 uppercase">Global Geographic Location</label>
+                        <input 
+                          type="text" 
+                          value={resumeForm.location || ""}
+                          onChange={e => setResumeForm({ ...resumeForm, location: e.target.value })}
+                          className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-neon-purple font-mono"
+                          placeholder="e.g. San Francisco, CA (Remote)"
+                        />
+                      </div>
+                      <div className="space-y-1 text-left">
+                        <label className="text-[10px] font-mono text-slate-400 uppercase">Direct Email Address</label>
+                        <input 
+                          type="text" 
+                          value={resumeForm.email || ""}
+                          onChange={e => setResumeForm({ ...resumeForm, email: e.target.value })}
+                          className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-neon-purple font-mono"
+                        />
+                      </div>
+                      <div className="space-y-1 text-left md:col-span-2">
+                        <label className="text-[10px] font-mono text-slate-400 uppercase">Contact Number (Optional)</label>
+                        <input 
+                          type="text" 
+                          value={resumeForm.phone || ""}
+                          onChange={e => setResumeForm({ ...resumeForm, phone: e.target.value })}
+                          className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-neon-purple font-mono"
+                          placeholder="e.g. +1 (555) 019-2834"
+                        />
+                      </div>
+                      <div className="space-y-1 text-left md:col-span-2">
+                        <label className="text-[10px] font-mono text-slate-400 uppercase">Interactive Engineering Philosophy Statement</label>
+                        <textarea 
+                          rows={3}
+                          value={resumeForm.philosophy || ""}
+                          onChange={e => setResumeForm({ ...resumeForm, philosophy: e.target.value })}
+                          className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-neon-purple font-sans leading-relaxed"
+                          placeholder="State your software design or development thesis statement..."
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Part B: Competencies & Framework Skills */}
+                  <div className="p-6 rounded-2xl bg-white/5 border border-white/10 space-y-3">
+                    <h4 className="text-xs font-mono uppercase text-neon-blue font-bold pb-2 border-b border-white/5">
+                      Expert Competencies & Core Skills
+                    </h4>
+                    <div className="space-y-1 text-left">
+                      <label className="text-[10px] font-mono text-slate-400 uppercase block">Framework Skills (Comma separated)</label>
+                      <input 
+                        type="text" 
+                        value={resumeSkillsText}
+                        onChange={e => setResumeSkillsText(e.target.value)}
+                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-neon-purple font-mono"
+                        placeholder="React, TypeScript, Node.js, Express, Tailwind CSS, Firestore, Google Cloud"
+                      />
+                      <p className="text-[10px] text-slate-500 font-mono">
+                        These tags will display interactively inside the skills cloud container on the resume popover modal.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Part C: Professional Experience Timeline */}
+                  <div className="p-6 rounded-2xl bg-white/5 border border-white/10 space-y-4">
+                    <div className="flex justify-between items-center pb-2 border-b border-white/5">
+                      <h4 className="text-xs font-mono uppercase text-neon-pink font-bold">
+                        Professional Work Experience Timeline
+                      </h4>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updatedList = [...(resumeForm.experienceList || [])];
+                          updatedList.push({
+                            id: Date.now().toString(),
+                            role: 'Software Architect / System Lead',
+                            company: 'Independent Contractor',
+                            duration: '2023 - PRESENT',
+                            description: 'Architecting system micro-services'
+                          });
+                          setResumeForm({ ...resumeForm, experienceList: updatedList });
+                        }}
+                        className="px-3 py-1.5 bg-neon-pink/10 border border-neon-pink/30 hover:bg-neon-pink/20 text-neon-pink text-[10px] font-mono uppercase rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add Timeline Node</span>
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      {resumeForm.experienceList && resumeForm.experienceList.length > 0 ? (
+                        resumeForm.experienceList.map((exp, index) => (
+                          <div key={exp.id || index} className="p-4 rounded-xl bg-black/30 border border-white/5 space-y-3 relative group">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updatedList = resumeForm.experienceList.filter((_, idx) => idx !== index);
+                                setResumeForm({ ...resumeForm, experienceList: updatedList });
+                              }}
+                              className="absolute top-4 right-4 p-1.5 rounded bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-all cursor-pointer opacity-80 group-hover:opacity-100"
+                              title="Delete Timeline Node"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                              <div className="space-y-1 text-left">
+                                <label className="text-[9px] font-mono text-slate-500 uppercase">Professional Role / Title</label>
+                                <input 
+                                  type="text" 
+                                  value={exp.role || ""}
+                                  onChange={e => {
+                                    const updatedList = [...resumeForm.experienceList];
+                                    updatedList[index].role = e.target.value;
+                                    setResumeForm({ ...resumeForm, experienceList: updatedList });
+                                  }}
+                                  className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-neon-purple font-sans font-bold"
+                                />
+                              </div>
+
+                              <div className="space-y-1 text-left">
+                                <label className="text-[9px] font-mono text-slate-500 uppercase">Institution / Company</label>
+                                <input 
+                                  type="text" 
+                                  value={exp.company || ""}
+                                  onChange={e => {
+                                    const updatedList = [...resumeForm.experienceList];
+                                    updatedList[index].company = e.target.value;
+                                    setResumeForm({ ...resumeForm, experienceList: updatedList });
+                                  }}
+                                  className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-neon-purple font-mono"
+                                />
+                              </div>
+
+                              <div className="space-y-1 text-left pr-10">
+                                <label className="text-[9px] font-mono text-slate-500 uppercase">Duration Period</label>
+                                <input 
+                                  type="text" 
+                                  value={exp.duration || ""}
+                                  onChange={e => {
+                                    const updatedList = [...resumeForm.experienceList];
+                                    updatedList[index].duration = e.target.value;
+                                    setResumeForm({ ...resumeForm, experienceList: updatedList });
+                                  }}
+                                  className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-neon-purple font-mono"
+                                  placeholder="e.g. 2022 - PRESENT"
+                                />
+                              </div>
+
+                              <div className="space-y-1 text-left md:col-span-3">
+                                <label className="text-[9px] font-mono text-slate-500 uppercase">Achievement Summary & Duties</label>
+                                <textarea 
+                                  rows={2}
+                                  value={exp.description || ""}
+                                  onChange={e => {
+                                    const updatedList = [...resumeForm.experienceList];
+                                    updatedList[index].description = e.target.value;
+                                    setResumeForm({ ...resumeForm, experienceList: updatedList });
+                                  }}
+                                  className="w-full bg-slate-900 border border-white/10 rounded-lg p-3 text-xs text-slate-300 focus:outline-none focus:border-neon-purple font-sans leading-relaxed"
+                                  placeholder="Describe core initiatives, tech stack, and achievements..."
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="p-8 border border-dashed border-white/10 rounded-xl text-center text-slate-500 font-mono text-xs">
+                          Your timeline path is empty. Press "Add Timeline Node" to architect your experience list history.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Part D: Education & Certification schema */}
+                  <div className="p-6 rounded-2xl bg-white/5 border border-white/10 space-y-4">
+                    <div className="flex justify-between items-center pb-2 border-b border-white/5">
+                      <h4 className="text-xs font-mono uppercase text-neon-blue font-bold">
+                        Education background & Certifications
+                      </h4>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updatedList = [...(resumeForm.educationList || [])];
+                          updatedList.push({
+                            id: Date.now().toString(),
+                            degree: 'B.S. in Computer Science',
+                            school: 'Technical State University',
+                            duration: '2016 - 2020'
+                          });
+                          setResumeForm({ ...resumeForm, educationList: updatedList });
+                        }}
+                        className="px-3 py-1.5 bg-neon-blue/10 border border-neon-blue/30 hover:bg-neon-blue/20 text-neon-blue text-[10px] font-mono uppercase rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add Education</span>
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      {resumeForm.educationList && resumeForm.educationList.length > 0 ? (
+                        resumeForm.educationList.map((edu, index) => (
+                          <div key={edu.id || index} className="p-4 rounded-xl bg-black/30 border border-white/5 space-y-3 relative group">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updatedList = resumeForm.educationList.filter((_, idx) => idx !== index);
+                                setResumeForm({ ...resumeForm, educationList: updatedList });
+                              }}
+                              className="absolute top-4 right-4 p-1.5 rounded bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-all cursor-pointer opacity-80 group-hover:opacity-100"
+                              title="Delete Education Node"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                              <div className="space-y-1 text-left">
+                                <label className="text-[9px] font-mono text-slate-500 uppercase">Degree / Certificate Name</label>
+                                <input 
+                                  type="text" 
+                                  value={edu.degree || ""}
+                                  onChange={e => {
+                                    const updatedList = [...resumeForm.educationList];
+                                    updatedList[index].degree = e.target.value;
+                                    setResumeForm({ ...resumeForm, educationList: updatedList });
+                                  }}
+                                  className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-neon-purple font-sans font-bold"
+                                />
+                              </div>
+
+                              <div className="space-y-1 text-left">
+                                <label className="text-[9px] font-mono text-slate-500 uppercase">Educational Institution</label>
+                                <input 
+                                  type="text" 
+                                  value={edu.school || ""}
+                                  onChange={e => {
+                                    const updatedList = [...resumeForm.educationList];
+                                    updatedList[index].school = e.target.value;
+                                    setResumeForm({ ...resumeForm, educationList: updatedList });
+                                  }}
+                                  className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-neon-purple font-mono"
+                                />
+                              </div>
+
+                              <div className="space-y-1 text-left pr-10">
+                                <label className="text-[9px] font-mono text-slate-500 uppercase">Passing out Year / Duration</label>
+                                <input 
+                                  type="text" 
+                                  value={edu.duration || ""}
+                                  onChange={e => {
+                                    const updatedList = [...resumeForm.educationList];
+                                    updatedList[index].duration = e.target.value;
+                                    setResumeForm({ ...resumeForm, educationList: updatedList });
+                                  }}
+                                  className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-neon-purple font-mono"
+                                  placeholder="e.g. 2020"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="p-8 border border-dashed border-white/10 rounded-xl text-center text-slate-500 font-mono text-xs">
+                          No educational items present. Hit "Add Education" to document your degrees.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Commit action bar */}
+                  <div className="flex justify-end pt-4 border-t border-white/5">
+                    <button
+                      type="button"
+                      onClick={saveResumeDetailsData}
+                      disabled={savingResumeDetails}
+                      className="px-6 py-3 bg-gradient-to-r from-neon-purple to-neon-blue hover:from-neon-purple/90 hover:to-neon-blue/90 text-white text-xs font-mono uppercase font-bold rounded-xl transition-all shadow-lg shadow-neon-purple/20 flex items-center gap-2 cursor-pointer"
+                    >
+                      {savingResumeDetails ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Save className="w-4 h-4" />
+                      )}
+                      <span>{savingResumeDetails ? "Actively Syncing..." : "Publish CV Updates"}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

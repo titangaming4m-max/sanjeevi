@@ -32,6 +32,7 @@ export interface Message {
   timestamp: any;
   read: boolean;
   replied: boolean;
+  phone?: string;
 }
 
 export interface Stat {
@@ -67,9 +68,14 @@ export interface Settings {
   githubUrl: string;
   linkedinUrl: string;
   twitterUrl: string;
+  youtubeUrl?: string;
   resumeUrl: string;
   chatbotEnabled: boolean;
   customApiKey?: string;
+  chatbotProvider?: 'gemini' | 'openai';
+  geminiApiKey?: string;
+  openaiApiKey?: string;
+  openaiModel?: string;
   quickReplies: string[];
   themePreset?: string;
   customPurple?: string;
@@ -87,4 +93,31 @@ export interface Settings {
   bannerGlow1?: string;
   bannerGlow2?: string;
   bannerShowGrid?: boolean;
+}
+
+export interface WorkExperience {
+  id: string;
+  role: string;
+  company: string;
+  duration: string;
+  description: string;
+}
+
+export interface EducationEntry {
+  id: string;
+  degree: string;
+  school: string;
+  duration: string;
+}
+
+export interface ResumeDetails {
+  fullName: string;
+  subtitle: string;
+  location: string;
+  email: string;
+  phone: string;
+  philosophy: string;
+  skills: string[];
+  experienceList: WorkExperience[];
+  educationList: EducationEntry[];
 }

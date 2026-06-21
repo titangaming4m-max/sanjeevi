@@ -42,6 +42,7 @@ let localBackupData = {
     githubUrl: "https://github.com",
     linkedinUrl: "https://linkedin.com",
     twitterUrl: "https://twitter.com",
+    youtubeUrl: "https://youtube.com",
     resumeUrl: "#",
     chatbotEnabled: true,
     quickReplies: ["Web Development", "UI/UX Design", "Mobile Apps", "Pricing Plans", "Contact Me"],
@@ -52,7 +53,7 @@ let localBackupData = {
   hero: {
     title: "CREATING FUTURISTIC DIGITAL EXPERIENCE",
     subtitle: "Interactive Fullstack Developer",
-    name: "Thennarasi",
+    name: "Sanjeevi",
     introParagraph: "I design and code pixel-perfect, highly immersive web applications. Specializing in React, Node, and advanced glassmorphism components with clean typography and motion.",
     profileImage: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=600&auto=format&fit=crop",
     experienceYears: 8,
@@ -62,8 +63,8 @@ let localBackupData = {
   },
   about: {
     description: "I'm a digital architect with a passion for designing visual interfaces that bridge high aesthetics and scalable backends. Over the last 8 years, I've developed interactive installations, e-commerce solutions, and custom AI tools. I strive for pixel-perfect fidelity, optimal performance, and solid data security.",
-    name: "Thennarasi",
-    email: "thennarasi@neon.dev",
+    name: "Sanjeevi",
+    email: "sanjeevi@neon.dev",
     phone: "+1 (555) 792-4211",
     location: "San Francisco, CA",
     experienceYearText: "8+ Years Experience",
@@ -133,6 +134,53 @@ let localBackupData = {
   adminToken: 'session-neon-admin-token-2026'
 };
 
+let localResumeFile = {
+  fileName: "Sanjeevi_Resume.pdf",
+  contentType: "application/pdf",
+  base64Data: "JVBERi0xLjQKJVRleHQgUmVzdW1lIGZvciBTYW5qZWV2aSAtIEludGVyYWN0aXZlIEZ1bGxzdGFjayBEZXZlbG9wZXIKMSAwIG9iagogIDw8IC9UeXBlIC9DYXRhbG9nCiAgICAgL1BhZ2VzIDIgMCBSCiAgPj4KZW5kb2JqCjIgMCBvYmoKICA8PCAvVHlwZSAvUGFnZXMKICAgICAvS2lkcyBbIDMgMCBSIF0KICAgICAvQ291bnQgMQogID4+CmVuZG9iagozIDAgb2JqCiAgPDwgL1R5cGUgL1BhZ2UKICAgICAvUGFyZW50IDIgMCBSCiAgICAgL01lZGlhQm94IFsgMCAwIDYxMiA3OTIgXQogICAgIC9SZXNvdXJjZXMgPDwgL0ZvbnQgPDwgL0YxIDQgMCBSID4+ID4+CiAgICAgL0NvbnRlbnRzIDUgMCBSCiAgPj4KZW5kb2JqCjQgMCBvYmoKICA8PCAvVHlwZSAvRm9udAogICAgIC9TdWJ0eXBlIC9UeXBlMQogICAgIC9CYXNlRm9udCAvSGVsdmV0aWNhCiAgPj4KZW5kb2JqCjUgMCBvYmoKICA8PCAvTGVuZ3RoIDE0MyA+PgpzdHJlYW0KQlQKICAvRjEgMjQgVGYKICA3MiA3MjAgVGQKICAoU2FuanVldmkgLSBSZXN1bWUpIFRqCiAgL0YxIDEyIFRmCiAgMCAtMzAgVGQKICAoSW50ZXJhY3RpdmUgRnVsbHN0YWNrIERldmVsb3BlcikgVGoKICAwIC0yMCBUZAogIChFbWFpbDogc2FuanVldm dishBuZW9uLmRldiB8IFBob25lOiArMSBcKDU1NVwpIDc5Mi00MjExKSBUagogIDAgLTMwIFRkCiAgKFRoaXMgaXMgYSBkeW5hbWljYWxseSBzb3VyY2VkIFBERiByZXN1bWUgZmlsZS4pIFRqCkU呵gplbmRzdHJlYW0KZW5kb2JqCnhyZWYKMCA2CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDAxNSAwMDAwMCBuIAowMDAwMDAwMDcwIDAwMDAwIG4gCjAwMDAwMDAxMyMwMDAwMCBuIAowMDAwMDAwMjQ3IDAwMDAwIG4gCjAwMDAwMDAzMjQgMDAwMDAgbiAKdHJhaWxlcgogIDw8IC9TaXplIDYKCiAgICAgL1Jvb3QgMSAwIFIKICA+PgpzdGFydHhyZWYKNTI4CiUlRU9GCg==",
+  uploadedAt: new Date().toISOString()
+};
+
+let localResumeDetails = {
+  fullName: "Sanjeevi",
+  subtitle: "Full-Stack Engineer & AI Craftsman",
+  location: "Global Remote Office",
+  email: "sanjeevi@neon.dev",
+  phone: "+1 (555) 792-4211",
+  philosophy: "Striving to write code that translates digital utility into pristine typography, elegant fluidity, and resilient server-authoritative logic. Designing with clean visual breathing spaces and absolute performance focus.",
+  skills: ["React", "TypeScript", "Node.js", "Express", "Tailwind CSS", "Firestore", "Google Cloud", "Animation Eng", "Rest APIs"],
+  experienceList: [
+    {
+      id: "exp1",
+      role: "Full-Stack System Engineer",
+      company: "Core Interactive Tech Group",
+      duration: "2022 - PRESENT",
+      description: "Engineered high-fidelity responsive websites, embedded glassmorphism visuals, and orchestrated secure backend API proxy architectures. Constructed automated data loaders and secure Express files/endpoints with seamless Firestore databases."
+    },
+    {
+      id: "exp2",
+      role: "Senior UI Specialist & Dev Lead",
+      company: "Cyberspace Creative Labs",
+      duration: "2019 - 2022",
+      description: "Designed interactive layouts combining optimized Canvas systems and high-density bento grids. Integrated multi-format media pipelines and maintained pristine typography hierarchies for major enterprise client apps."
+    }
+  ],
+  educationList: [
+    {
+      id: "edu1",
+      degree: "Master of Computer Systems",
+      school: "Advanced Digital Architecture Lab",
+      duration: "2019"
+    },
+    {
+      id: "edu2",
+      degree: "B.S. in Software Systems & Graphics",
+      school: "Department of Computer Science",
+      duration: "2017"
+    }
+  ]
+};
+
 // Help initialize Firestore collections with default configurations if empty
 async function preseedFirestoreDatabase() {
   if (!firestoreDb) return;
@@ -184,21 +232,53 @@ async function preseedFirestoreDatabase() {
       try {
         const heroDocRef = doc(firestoreDb, 'portfolio_data', 'hero');
         const heroDoc = await getDoc(heroDocRef);
-        if (heroDoc.exists() && heroDoc.data()?.name === 'Alex Rivera') {
-          await updateDoc(heroDocRef, { name: 'Thennarasi' });
-          console.log('Successfully updated Firestore hero name reference.');
+        if (heroDoc.exists() && (heroDoc.data()?.name === 'Alex Rivera' || heroDoc.data()?.name === 'Thennarasi')) {
+          await updateDoc(heroDocRef, { name: 'Sanjeevi' });
+          console.log('Successfully updated Firestore hero name reference to Sanjeevi.');
         }
 
         const aboutDocRef = doc(firestoreDb, 'portfolio_data', 'about');
         const aboutDoc = await getDoc(aboutDocRef);
-        if (aboutDoc.exists() && aboutDoc.data()?.name === 'Alex Rivera') {
-          await updateDoc(aboutDocRef, { name: 'Thennarasi', email: 'thennarasi@neon.dev' });
-          console.log('Successfully updated Firestore about name reference.');
+        if (aboutDoc.exists() && (aboutDoc.data()?.name === 'Alex Rivera' || aboutDoc.data()?.name === 'Thennarasi')) {
+          await updateDoc(aboutDocRef, { name: 'Sanjeevi', email: 'sanjeevi@neon.dev' });
+          console.log('Successfully updated Firestore about name reference to Sanjeevi.');
         }
       } catch (dbErr) {
         console.warn('Could not run automated username update migration in Firestore:', dbErr);
       }
     }
+
+    // Sync/Load the uploaded resume from Firestore or write default
+    try {
+      const resumeDocRef = doc(firestoreDb, 'portfolio_data', 'resume');
+      const resumeDoc = await getDoc(resumeDocRef);
+      if (resumeDoc.exists()) {
+        localResumeFile = resumeDoc.data() as any;
+        console.log('Successfully loaded resume file from Firestore:', localResumeFile.fileName);
+        localBackupData.settings.resumeUrl = '/api/resume/download';
+      } else {
+        console.log('Seeding default resume file reference into Firestore...');
+        await setDoc(resumeDocRef, localResumeFile);
+      }
+    } catch (resErr) {
+      console.warn('Could not load or sync resume from Firestore:', resErr);
+    }
+
+    // Sync/Load the structured CV details
+    try {
+      const resumeDetailsRef = doc(firestoreDb, 'portfolio_data', 'resume_details');
+      const resumeDetailsDoc = await getDoc(resumeDetailsRef);
+      if (resumeDetailsDoc.exists()) {
+        localResumeDetails = resumeDetailsDoc.data() as any;
+        console.log('Successfully loaded structured resume details from Firestore.');
+      } else {
+        console.log('Seeding default structured resume details into Firestore...');
+        await setDoc(resumeDetailsRef, localResumeDetails);
+      }
+    } catch (resDetailsErr) {
+      console.warn('Could not load or sync structured CV details from Firestore:', resDetailsErr);
+    }
+
   } catch (error) {
     console.error('Error seeding database:', error);
   }
@@ -329,6 +409,54 @@ app.get('/api/portfolio', async (req, res) => {
   }
 });
 
+// Real-time public analytics stats endpoint
+app.get('/api/portfolio/stats', async (req, res) => {
+  try {
+    let totalMessages = 0;
+    let repliedMessages = 0;
+    let totalChatLogs = 0;
+
+    if (firestoreDb) {
+      const msgsSnap = await getDocs(collection(firestoreDb, 'portfolio_messages'));
+      totalMessages = msgsSnap.size;
+      let replCnt = 0;
+      msgsSnap.forEach(d => {
+        if (d.data().replied) replCnt++;
+      });
+      repliedMessages = replCnt;
+
+      const chatLogsSnap = await getDocs(collection(firestoreDb, 'portfolio_chat_logs'));
+      totalChatLogs = chatLogsSnap.size;
+    } else {
+      totalMessages = localBackupData.messages.length;
+      repliedMessages = localBackupData.messages.filter((m: any) => m.replied).length;
+      totalChatLogs = localBackupData.chatLogs.length;
+    }
+
+    const responseRate = totalMessages > 0 ? Math.round((repliedMessages / totalMessages) * 100) : 0;
+
+    res.json({
+      totalMessages,
+      repliedMessages,
+      unreadMessages: totalMessages - repliedMessages,
+      totalChatLogs,
+      responseRate,
+      activeUptime: "100%",
+      status: "SYNCED"
+    });
+  } catch (error: any) {
+    res.json({
+      totalMessages: localBackupData.messages.length,
+      repliedMessages: localBackupData.messages.filter((m: any) => m.replied).length,
+      unreadMessages: 0,
+      totalChatLogs: localBackupData.chatLogs.length,
+      responseRate: 100,
+      activeUptime: "100%",
+      status: "FALLBACK"
+    });
+  }
+});
+
 // ---------------------------------
 // SYSTEM UTILITIES (ADMIN SECURED)
 // ---------------------------------
@@ -340,6 +468,7 @@ app.post('/api/admin/reset', verifyAdmin, async (req, res) => {
       githubUrl: "https://github.com",
       linkedinUrl: "https://linkedin.com",
       twitterUrl: "https://twitter.com",
+      youtubeUrl: "https://youtube.com",
       resumeUrl: "#",
       chatbotEnabled: true,
       quickReplies: ["Web Development", "UI/UX Design", "Mobile Apps", "Pricing Plans", "Contact Me"],
@@ -351,7 +480,7 @@ app.post('/api/admin/reset', verifyAdmin, async (req, res) => {
     localBackupData.hero = {
       title: "CREATING FUTURISTIC DIGITAL EXPERIENCE",
       subtitle: "Interactive Fullstack Developer",
-      name: "Thennarasi",
+      name: "Sanjeevi",
       introParagraph: "I design and code pixel-perfect, highly immersive web applications. Specializing in React, Node, and advanced glassmorphism components with clean typography and motion.",
       profileImage: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=600&auto=format&fit=crop",
       experienceYears: 8,
@@ -362,8 +491,8 @@ app.post('/api/admin/reset', verifyAdmin, async (req, res) => {
     
     localBackupData.about = {
       description: "I'm a digital architect with a passion for designing visual interfaces that bridge high aesthetics and scalable backends. Over the last 8 years, I've developed interactive installations, e-commerce solutions, and custom AI tools. I strive for pixel-perfect fidelity, optimal performance, and solid data security.",
-      name: "Thennarasi",
-      email: "thennarasi@neon.dev",
+      name: "Sanjeevi",
+      email: "sanjeevi@neon.dev",
       phone: "+1 (555) 792-4211",
       location: "San Francisco, CA",
       experienceYearText: "8+ Years Experience",
@@ -503,6 +632,125 @@ app.post('/api/settings/update', verifyAdmin, async (req, res) => {
       await setDoc(doc(firestoreDb, 'portfolio_data', 'settings'), updatedSettings, { merge: true });
     }
     res.json({ success: true, message: 'Settings saved successfully' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Resume Operations Channels
+app.get('/api/resume/info', async (req, res) => {
+  try {
+    res.json({
+      success: true,
+      fileName: localResumeFile.fileName,
+      contentType: localResumeFile.contentType,
+      uploadedAt: localResumeFile.uploadedAt,
+      fileSize: localResumeFile.base64Data ? Math.round((localResumeFile.base64Data.length * 3) / 4) : 0
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/resume/upload', verifyAdmin, async (req, res) => {
+  try {
+    const { fileName, contentType, base64Data } = req.body;
+    if (!base64Data) {
+      return res.status(400).json({ error: 'Missing base64Data content' });
+    }
+
+    localResumeFile = {
+      fileName: fileName || "Sanjeevi_Resume.pdf",
+      contentType: contentType || "application/pdf",
+      base64Data,
+      uploadedAt: new Date().toISOString()
+    };
+
+    // Keep settings in sync so download links pull from the active upload route
+    localBackupData.settings.resumeUrl = '/api/resume/download';
+
+    if (firestoreDb) {
+      // Save full resume document
+      const resumeDocRef = doc(firestoreDb, 'portfolio_data', 'resume');
+      await setDoc(resumeDocRef, localResumeFile);
+
+      // Save setting entry so the frontend buttons know to direct to this route
+      await setDoc(doc(firestoreDb, 'portfolio_data', 'settings'), { resumeUrl: '/api/resume/download' }, { merge: true });
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'Resume file uploaded and synchronized successfully!',
+      details: {
+        fileName: localResumeFile.fileName,
+        contentType: localResumeFile.contentType,
+        uploadedAt: localResumeFile.uploadedAt
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/resume/download', (req, res) => {
+  try {
+    if (!localResumeFile || !localResumeFile.base64Data) {
+      return res.status(404).send('No resume file has been uploaded yet.');
+    }
+
+    const buffer = Buffer.from(localResumeFile.base64Data, 'base64');
+    res.setHeader('Content-Type', localResumeFile.contentType || 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${localResumeFile.fileName || 'Resume.pdf'}"`);
+    res.setHeader('Content-Length', buffer.length);
+    res.end(buffer);
+  } catch (error: any) {
+    res.status(500).send(`Failed to deliver file: ${error.message}`);
+  }
+});
+
+app.get('/api/resume/view', (req, res) => {
+  try {
+    if (!localResumeFile || !localResumeFile.base64Data) {
+      return res.status(404).send('No resume CV file has been uploaded yet.');
+    }
+
+    const buffer = Buffer.from(localResumeFile.base64Data, 'base64');
+    res.setHeader('Content-Type', localResumeFile.contentType || 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${localResumeFile.fileName || 'Resume.pdf'}"`);
+    res.setHeader('Content-Length', buffer.length);
+    res.end(buffer);
+  } catch (error: any) {
+    res.status(500).send(`Failed to render file: ${error.message}`);
+  }
+});
+
+// Structured JSON Resume endpoints
+app.get('/api/resume/details', async (req, res) => {
+  try {
+    if (firestoreDb) {
+      const detailsDocRef = doc(firestoreDb, 'portfolio_data', 'resume_details');
+      const detailsDoc = await getDoc(detailsDocRef);
+      if (detailsDoc.exists()) {
+        localResumeDetails = detailsDoc.data() as any;
+      }
+    }
+    res.json({ success: true, data: localResumeDetails });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/resume/details/update', verifyAdmin, async (req, res) => {
+  try {
+    const updatedDetails = req.body;
+    localResumeDetails = { ...localResumeDetails, ...updatedDetails };
+
+    if (firestoreDb) {
+      const detailsDocRef = doc(firestoreDb, 'portfolio_data', 'resume_details');
+      await setDoc(detailsDocRef, localResumeDetails);
+    }
+
+    res.json({ success: true, message: 'CV Details updated successfully!', data: localResumeDetails });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -659,7 +907,7 @@ app.delete('/api/projects/:id', verifyAdmin, async (req, res) => {
 // ---------------------------------
 app.post('/api/messages/submit', async (req, res) => {
   try {
-    const { name, email, subject, message } = req.body;
+    const { name, email, subject, message, phone } = req.body;
     if (!name || !email || !message) {
       return res.status(400).json({ error: 'Name, email, and message are required fields' });
     }
@@ -670,6 +918,7 @@ app.post('/api/messages/submit', async (req, res) => {
       email,
       subject: subject || 'No Subject',
       message,
+      phone: phone || '',
       timestamp: new Date().toISOString(),
       read: false,
       replied: false
@@ -772,6 +1021,11 @@ app.post('/api/chat', async (req, res) => {
     let customKey = "";
     let chatBotEnabled = true;
 
+    let chatbotProvider = "gemini";
+    let geminiApiKey = "";
+    let openaiApiKey = "";
+    let openaiModel = "gpt-4o-mini";
+
     // Load developer API key or fallback to environment key
     if (firestoreDb) {
       const settingsSnap = await getDoc(doc(firestoreDb, 'portfolio_data', 'settings'));
@@ -779,24 +1033,24 @@ app.post('/api/chat', async (req, res) => {
         const sd = settingsSnap.data();
         customKey = sd?.customApiKey || "";
         chatBotEnabled = sd?.chatbotEnabled !== false;
+        chatbotProvider = sd?.chatbotProvider || "gemini";
+        geminiApiKey = sd?.geminiApiKey || "";
+        openaiApiKey = sd?.openaiApiKey || "";
+        openaiModel = sd?.openaiModel || "gpt-4o-mini";
       }
     } else {
       customKey = localBackupData.settings.customApiKey || "";
       chatBotEnabled = localBackupData.settings.chatbotEnabled;
+      chatbotProvider = (localBackupData.settings as any).chatbotProvider || "gemini";
+      geminiApiKey = (localBackupData.settings as any).geminiApiKey || "";
+      openaiApiKey = (localBackupData.settings as any).openaiApiKey || "";
+      openaiModel = (localBackupData.settings as any).openaiModel || "gpt-4o-mini";
     }
 
     if (!chatBotEnabled) {
       return res.json({ response: "The portfolio chatbot is currently disabled by the administrator." });
     }
 
-    const apiKey = customKey || process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return res.json({ response: "AI Companion is currently sleeping (API key is not configured yet). Drop a line in the Contact form to reach me!" });
-    }
-
-    // Initialize Google GenAI with the verified API key
-    const ai = new GoogleGenAI({ apiKey });
-    
     // Build context about the developer
     let profileContext = "";
     if (firestoreDb) {
@@ -826,41 +1080,147 @@ app.post('/api/chat', async (req, res) => {
 
     const systemInstruction = `
       ${profileContext}
-      Always speak from the perspective of an AI helper managing ${localBackupData.hero.name}'s virtual portfolio.
-      Be enthusiastic about hiring, custom development, responsive websites, motion designs, or layout consultation.
-      Answer questions about skills, pricing guidelines, services, and locations. Give exact, useful, non-rambling answers.
-      Keep content in clear human terms, occasionally highlighting futuristic tech elements in your description.
+      You are a warm, advanced AI Companion managing ${localBackupData.hero.name}'s professional portfolio hub.
+      CRITICAL OPERATIVE DIRECTIVE: You must answer ALL questions, inquiries, coding problems, tech assistance, or general knowledge prompts asked by the user. Never refuse or say you only answer portfolio questions. You are a complete multi-domain AI help assistant!
+      If the question is unrelated to the developer, answer the question perfectly first, and then optionally find a clever, charming way to connect it back to Sanjeevi's engineering, coding, or UI expertise.
+      Be enthusiastic about hiring, custom development, responsive websites, motion designs, or layout consultation. Give exact, highly useful, non-rambling answers with modern flair.
     `;
 
-    // Map conversation logs format
-    const contents = [];
-    if (history && Array.isArray(history)) {
-      for (const h of history) {
-        contents.push({
-          role: h.sender === 'user' ? 'user' : 'model',
-          parts: [{ text: h.text }]
+    let aiTextResponse = "";
+
+    if (chatbotProvider === "openai") {
+      try {
+        const apiKeyToUse = openaiApiKey || process.env.OPENAI_API_KEY;
+        if (!apiKeyToUse) {
+          throw new Error("OpenAI API Key is not configured yet.");
+        }
+
+        const openAiMessages = [
+          {
+            role: "system",
+            content: systemInstruction
+          }
+        ];
+
+        if (history && Array.isArray(history)) {
+          for (const h of history) {
+            openAiMessages.push({
+              role: h.sender === 'user' ? 'user' : 'assistant',
+              content: h.text
+            });
+          }
+        }
+
+        openAiMessages.push({
+          role: "user",
+          content: message
         });
+
+        // Call OpenAI API
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKeyToUse}`
+          },
+          body: JSON.stringify({
+            model: openaiModel || "gpt-4o-mini",
+            messages: openAiMessages,
+            max_tokens: 500,
+            temperature: 0.7
+          })
+        });
+
+        if (!response.ok) {
+          const errBody = await response.json().catch(() => ({}));
+          throw new Error(errBody?.error?.message || `HTTP ${response.status} from OpenAI`);
+        }
+
+        const result = await response.json();
+        aiTextResponse = result.choices?.[0]?.message?.content || "I couldn't generate a reply with OpenAI. Please try again.";
+      } catch (openAiError: any) {
+        console.warn("OpenAI API request failed, initiating intelligent fallback via Google Gemini:", openAiError.message);
+        
+        // Auto Fallback to Google Gemini
+        const fallbackKey = process.env.GEMINI_API_KEY || geminiApiKey || customKey;
+        if (!fallbackKey) {
+          return res.json({ 
+            response: `⚠️ [OpenAI API Quota/Key Error: ${openAiError.message}]. There is no backup Gemini API Key configured in the workspace environment variables to execute fallback.`
+          });
+        }
+
+        try {
+          const ai = new GoogleGenAI({ apiKey: fallbackKey });
+          const contents = [];
+          if (history && Array.isArray(history)) {
+            for (const h of history) {
+              contents.push({
+                role: h.sender === 'user' ? 'user' : 'model',
+                parts: [{ text: h.text }]
+              });
+            }
+          }
+          contents.push({
+            role: 'user',
+            parts: [{ text: message }]
+          });
+
+          const result = await ai.models.generateContent({
+            model: 'gemini-3.5-flash',
+            contents,
+            config: {
+              systemInstruction: systemInstruction + "\n(Context suffix: Due to OpenAI quota limits, process this query perfectly with Google Gemini. Add a polite mini-note at the bottom of your reply explaining that you gracefully routed the response to Gemini for optimum performance.)",
+              maxOutputTokens: 500,
+              temperature: 0.7,
+            }
+          });
+
+          aiTextResponse = result.text || "I processed your request, but the generator returned empty.";
+        } catch (geminiFallbackError: any) {
+          throw new Error(`OpenAI failed (${openAiError.message}) and Gemini fallback failed too (${geminiFallbackError.message})`);
+        }
       }
+    } else {
+      // DEFAULT: Gemini
+      const apiKeyToUse = geminiApiKey || customKey || process.env.GEMINI_API_KEY;
+      if (!apiKeyToUse) {
+        return res.json({ response: "Google Gemini API Key is not configured yet. Please supply a valid Gemini token in the Admin Settings panel!" });
+      }
+
+      const ai = new GoogleGenAI({ apiKey: apiKeyToUse });
+
+      const contents = [];
+      if (history && Array.isArray(history)) {
+        for (const h of history) {
+          contents.push({
+            role: h.sender === 'user' ? 'user' : 'model',
+            parts: [{ text: h.text }]
+          });
+        }
+      }
+      contents.push({
+        role: 'user',
+        parts: [{ text: message }]
+      });
+
+      // Query Gemini 3.5 Flash for conversational text tasks
+      const result = await ai.models.generateContent({
+        model: 'gemini-3.5-flash',
+        contents,
+        config: {
+          systemInstruction,
+          maxOutputTokens: 500,
+          temperature: 0.7,
+        }
+      });
+
+      aiTextResponse = result.text || "I'm processing that. Let me review and follow up!";
     }
-    contents.push({
-      role: 'user',
-      parts: [{ text: message }]
-    });
-
-    const result = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents,
-      config: {
-        systemInstruction,
-        maxOutputTokens: 500,
-        temperature: 0.7,
-      }
-    });
-
-    const aiTextResponse = result.text || "I'm processing that. Let me review and follow up!";
 
     // Save logs
+    const logId = Date.now().toString() + Math.random().toString(36).substring(2, 7);
     const logItem = {
+      id: logId,
       message,
       reply: aiTextResponse,
       timestamp: new Date().toISOString()
@@ -873,7 +1233,7 @@ app.post('/api/chat', async (req, res) => {
 
     res.json({ response: aiTextResponse });
   } catch (error: any) {
-    console.error('Gemini error:', error);
+    console.error('Chat error:', error);
     res.json({ response: `Hey! I ran into an authentication or communication hiccup. Please configure valid API credentials in the Admin settings! Error info: ${error.message}` });
   }
 });
@@ -885,12 +1245,66 @@ app.get('/api/chat/history', verifyAdmin, async (req, res) => {
       const logsSnap = await getDocs(collection(firestoreDb, 'portfolio_chat_logs'));
       const list: any[] = [];
       logsSnap.forEach(docSnap => {
-        list.push(docSnap.data());
+        const data = docSnap.data();
+        list.push({ id: docSnap.id, ...data });
       });
       list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       return res.json(list.slice(0, 50)); // Last 50 conversations
     } else {
-      return res.json(localBackupData.chatLogs.reverse());
+      return res.json([...localBackupData.chatLogs].reverse());
+    }
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Admin endpoint to update website interactions telemetry logs
+app.put('/api/chat/history/:id', verifyAdmin, async (req, res) => {
+  const { id } = req.params;
+  const { message, reply } = req.body;
+  try {
+    if (firestoreDb) {
+      const docRef = doc(firestoreDb, 'portfolio_chat_logs', id);
+      await updateDoc(docRef, { message, reply });
+      res.json({ success: true });
+    } else {
+      const log = localBackupData.chatLogs.find((l: any) => l.id === id);
+      if (log) {
+        log.message = message;
+        log.reply = reply;
+        res.json({ success: true });
+      } else {
+        const logByTimestamp = localBackupData.chatLogs.find((l: any) => l.timestamp === id);
+        if (logByTimestamp) {
+          logByTimestamp.message = message;
+          logByTimestamp.reply = reply;
+          res.json({ success: true });
+        } else {
+          res.status(404).json({ error: 'Telemetry log not found' });
+        }
+      }
+    }
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Admin endpoint to delete dynamic telemetry logs
+app.delete('/api/chat/history/:id', verifyAdmin, async (req, res) => {
+  const { id } = req.params;
+  try {
+    if (firestoreDb) {
+      const docRef = doc(firestoreDb, 'portfolio_chat_logs', id);
+      await deleteDoc(docRef);
+      res.json({ success: true });
+    } else {
+      const initialLength = localBackupData.chatLogs.length;
+      localBackupData.chatLogs = localBackupData.chatLogs.filter((l: any) => l.id !== id && l.timestamp !== id);
+      if (localBackupData.chatLogs.length < initialLength) {
+        res.json({ success: true });
+      } else {
+        res.status(404).json({ error: 'Telemetry log not found' });
+      }
     }
   } catch (error: any) {
     res.status(500).json({ error: error.message });

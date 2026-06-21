@@ -6,6 +6,7 @@ import Skills from './components/Skills';
 import Projects from './components/Projects';
 import Services from './components/Services';
 import Contact from './components/Contact';
+
 import Chatbot from './components/Chatbot';
 import AdminDashboard from './components/AdminDashboard';
 import { Project, Skill, Service, HeroData, AboutData, Settings } from './types';
@@ -83,6 +84,7 @@ export default function App() {
       githubUrl: "https://github.com",
       linkedinUrl: "https://linkedin.com",
       twitterUrl: "https://twitter.com",
+      youtubeUrl: "https://youtube.com",
       resumeUrl: "#",
       chatbotEnabled: true,
       quickReplies: ["Web Development", "UI/UX Design", "Mobile Apps", "Pricing Plans", "Contact Me"]
@@ -90,7 +92,7 @@ export default function App() {
     hero: {
       title: "CREATING FUTURISTIC DIGITAL EXPERIENCE",
       subtitle: "Interactive Fullstack Developer",
-      name: "Thennarasi",
+      name: "Sanjeevi",
       introParagraph: "I design and code pixel-perfect, highly immersive web applications. Specializing in React, Node, and advanced glassmorphism components with clean typography and motion.",
       profileImage: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=600&auto=format&fit=crop",
       experienceYears: 8,
@@ -100,8 +102,8 @@ export default function App() {
     },
     about: {
       description: "I'm a digital architect with a passion for designing visual interfaces that bridge high aesthetics and scalable backends. Over the last 8 years, I've developed interactive installations, e-commerce solutions, and custom AI tools.",
-      name: "Thennarasi",
-      email: "thennarasi@neon.dev",
+      name: "Sanjeevi",
+      email: "sanjeevi@neon.dev",
       phone: "+1 (555) 792-4211",
       location: "San Francisco, CA",
       experienceYearText: "8+ Years Experience",
@@ -234,7 +236,8 @@ export default function App() {
         socials={{
           github: portfolio.settings.githubUrl,
           linkedin: portfolio.settings.linkedinUrl,
-          twitter: portfolio.settings.twitterUrl
+          twitter: portfolio.settings.twitterUrl,
+          youtube: portfolio.settings.youtubeUrl
         }}
         resumeUrl={portfolio.settings.resumeUrl}
         artShape={artShape}
@@ -257,6 +260,8 @@ export default function App() {
 
       {/* services module catalog */}
       <Services services={portfolio.services} />
+
+
 
       {/* secure customer transmission portal */}
       <Contact aboutData={portfolio.about} />

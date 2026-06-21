@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageSquare, X, Send, Sparkles, Loader2, RefreshCw } from 'lucide-react';
+import { MessageSquare, X, Send, Sparkles, Loader2, RefreshCw, Volume2, VolumeX } from 'lucide-react';
 
 interface ChatbotProps {
   quickReplies: string[];
@@ -27,8 +27,70 @@ export default function Chatbot({ quickReplies, enabled }: ChatbotProps) {
   ]);
   const [inputValue, setInputValue] = useState('');
   const [loading, setLoading] = useState(false);
+  const [autoRead, setAutoRead] = useState(false);
+  const [currentlySpeakingId, setCurrentlySpeakingId] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Clean up speaker synthesis when component unmounts
+  useEffect(() => {
+    return () => {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
+  const speakMessage = (text: string, id: string) => {
+    if (!('speechSynthesis' in window)) {
+      console.warn("Speech Synthesis is not supported in this browser.");
+      return;
+    }
+
+    // If currently speaking this message, toggle off
+    if (currentlySpeakingId === id) {
+      window.speechSynthesis.cancel();
+      setCurrentlySpeakingId(null);
+      return;
+    }
+
+    // Cancel current reading session first
+    window.speechSynthesis.cancel();
+
+    // Strip formatting like markdown symbols for clean recitation
+    const cleanText = text
+      .replace(/[*_#`~]/g, '')
+      .replace(/\[.*?\]\(.*?\)/g, '')
+      .trim();
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    
+    utterance.onstart = () => {
+      setCurrentlySpeakingId(id);
+    };
+
+    utterance.onend = () => {
+      setCurrentlySpeakingId(null);
+    };
+
+    utterance.onerror = () => {
+      setCurrentlySpeakingId(null);
+    };
+
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const stopSpeaking = () => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      setCurrentlySpeakingId(null);
+    }
+  };
+
+  const handleClose = () => {
+    stopSpeaking();
+    setIsOpen(false);
+  };
 
   // Auto scroll to latest chats
   const scrollToBottom = () => {
@@ -40,6 +102,16 @@ export default function Chatbot({ quickReplies, enabled }: ChatbotProps) {
       setTimeout(scrollToBottom, 100);
     }
   }, [messages, isOpen]);
+
+  // Auto-speak new incoming replies if enabled
+  useEffect(() => {
+    if (messages.length > 0 && autoRead) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage.sender === 'bot') {
+        speakMessage(lastMessage.text, lastMessage.id);
+      }
+    }
+  }, [messages, autoRead]);
 
   const handleSendMessage = async (textToSend: string) => {
     if (!textToSend.trim()) return;
@@ -127,12 +199,26 @@ export default function Chatbot({ quickReplies, enabled }: ChatbotProps) {
               </div>
             </div>
             
-            <button 
-              onClick={() => setIsOpen(false)}
-              className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/5 cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
+            <div className="flex items-center space-x-1">
+              <button 
+                onClick={() => setAutoRead(!autoRead)}
+                className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
+                  autoRead 
+                    ? 'bg-neon-purple/20 border-neon-purple/40 text-neon-pink' 
+                    : 'bg-white/5 border-white/5 text-slate-400 hover:text-white'
+                }`}
+                title={autoRead ? 'Mute AI speech read-out' : 'Enable real-time AI reply speech read-out'}
+              >
+                {autoRead ? <Volume2 className="w-3.5 h-3.5 animate-pulse" /> : <VolumeX className="w-3.5 h-3.5" />}
+              </button>
+
+              <button 
+                onClick={handleClose}
+                className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-white/5 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
           {/* Message Thread Body */}
@@ -144,21 +230,38 @@ export default function Chatbot({ quickReplies, enabled }: ChatbotProps) {
               >
                 <div className={`px-4 py-2.5 rounded-2xl text-xs leading-relaxed ${
                   msg.sender === 'user' 
-                    ? 'bg-gradient-to-tr from-neon-purple to-neon-blue text-white rounded-tr-none shadow-md' 
-                    : 'bg-white/5 border border-white/5 text-slate-200 rounded-tl-none'
+                    ? 'bg-gradient-to-tr from-neon-purple to-neon-blue text-white rounded-tr-none shadow-md font-medium' 
+                    : 'bg-black/90 border border-white/15 text-white font-medium rounded-tl-none'
                 }`}>
                   {msg.text}
                 </div>
-                <span className="text-[8px] font-mono text-slate-500 mt-1 uppercase">
-                  {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
+                
+                <div className="flex items-center space-x-2 mt-1">
+                  <span className="text-[8px] font-mono text-slate-500 uppercase">
+                    {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                  {msg.sender === 'bot' && (
+                    <button
+                      onClick={() => speakMessage(msg.text, msg.id)}
+                      className={`text-[8px] font-mono uppercase tracking-wide hover:text-white flex items-center space-x-1 border px-1.5 py-0.5 rounded transition-all cursor-pointer ${
+                        currentlySpeakingId === msg.id 
+                          ? 'border-neon-pink text-neon-pink bg-neon-pink/10 animate-pulse font-bold' 
+                          : 'border-white/5 text-slate-400 hover:bg-white/5'
+                      }`}
+                      title={currentlySpeakingId === msg.id ? 'Stop reading' : 'Read announcement aloud'}
+                    >
+                      <Volume2 className="w-2.5 h-2.5" />
+                      <span>{currentlySpeakingId === msg.id ? 'STOP' : 'PLAY'}</span>
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
 
             {/* Typing Loader simulation */}
             {loading && (
               <div className="flex flex-col items-start max-w-[85%] mr-auto">
-                <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 rounded-tl-none flex items-center space-x-1.5">
+                <div className="px-4 py-3 rounded-2xl bg-black/90 border border-white/10 rounded-tl-none flex items-center space-x-1.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-neon-pink animate-bounce delay-100"></span>
                   <span className="h-1.5 w-1.5 rounded-full bg-neon-purple animate-bounce delay-200"></span>
                   <span className="h-1.5 w-1.5 rounded-full bg-neon-blue animate-bounce delay-300"></span>
@@ -207,7 +310,13 @@ export default function Chatbot({ quickReplies, enabled }: ChatbotProps) {
 
       {/* Primary Activation Floating Icon */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          if (isOpen) {
+            handleClose();
+          } else {
+            setIsOpen(true);
+          }
+        }}
         className="h-14 w-14 rounded-full bg-gradient-to-tr from-neon-purple via-neon-pink to-neon-blue p-[2px] shadow-[0_0_20px_rgba(138,43,226,0.3)] hover:shadow-[0_0_30px_rgba(255,77,255,0.5)] transform hover:scale-110 active:scale-95 transition-all duration-300 cursor-pointer relative group"
         id="chatbot-trigger-btn"
       >

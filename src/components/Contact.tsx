@@ -11,6 +11,7 @@ export default function Contact({ aboutData }: ContactProps) {
     name: '',
     email: '',
     subject: '',
+    phone: '',
     message: ''
   });
 
@@ -44,7 +45,7 @@ export default function Contact({ aboutData }: ContactProps) {
       if (response.ok && data.success) {
         setStatus('success');
         setStatusMsg('Quantum signal received! Your inquiry is logged in the database.');
-        setFormData({ name: '', email: '', subject: '', message: '' });
+        setFormData({ name: '', email: '', subject: '', phone: '', message: '' });
       } else {
         setStatus('error');
         setStatusMsg(data.error || 'Failed to dispatch the connection. Try again later!');
@@ -177,17 +178,30 @@ export default function Contact({ aboutData }: ContactProps) {
                   </div>
                 </div>
 
-                {/* Subject Block */}
-                <div className="space-y-1">
-                  <label className="block text-[10px] font-mono tracking-wider text-slate-400 uppercase">Subject</label>
-                  <input 
-                    type="text" 
-                    name="subject"
-                    value={formData.subject}
-                    onChange={handleInputChange}
-                    placeholder="e.g. Custom platform architecture"
-                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 focus:border-neon-purple/80 focus:shadow-[0_0_15px_rgba(138,43,226,0.15)] text-sm text-white transition-all outline-none"
-                  />
+                {/* Subject & Mobile Number Row */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div className="space-y-1">
+                    <label className="block text-[10px] font-mono tracking-wider text-slate-400 uppercase">Subject</label>
+                    <input 
+                      type="text" 
+                      name="subject"
+                      value={formData.subject}
+                      onChange={handleInputChange}
+                      placeholder="e.g. Custom platform architecture"
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 focus:border-neon-purple/80 focus:shadow-[0_0_15px_rgba(138,43,226,0.15)] text-sm text-white transition-all outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-[10px] font-mono tracking-wider text-slate-400 uppercase">Contact Mobile <span className="text-[9px] text-slate-500 font-normal">(Optional)</span></label>
+                    <input 
+                      type="tel" 
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleInputChange}
+                      placeholder="e.g. +1 (555) 792-4211"
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 focus:border-neon-blue/80 focus:shadow-[0_0_15px_rgba(0,191,255,0.15)] text-sm text-white transition-all outline-none"
+                    />
+                  </div>
                 </div>
 
                 {/* Message Block */}
