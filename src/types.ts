@@ -93,6 +93,7 @@ export interface Settings {
   bannerGlow1?: string;
   bannerGlow2?: string;
   bannerShowGrid?: boolean;
+  googleAnalyticsId?: string;
 }
 
 export interface WorkExperience {

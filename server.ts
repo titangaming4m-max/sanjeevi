@@ -48,7 +48,8 @@ let localBackupData = {
     quickReplies: ["Web Development", "UI/UX Design", "Mobile Apps", "Pricing Plans", "Contact Me"],
     customApiKey: "",
     artShape: "circle",
-    buttonStyle: "glow"
+    buttonStyle: "glow",
+    googleAnalyticsId: ""
   },
   hero: {
     title: "CREATING FUTURISTIC DIGITAL EXPERIENCE",
@@ -474,7 +475,8 @@ app.post('/api/admin/reset', verifyAdmin, async (req, res) => {
       quickReplies: ["Web Development", "UI/UX Design", "Mobile Apps", "Pricing Plans", "Contact Me"],
       customApiKey: "",
       artShape: "circle",
-      buttonStyle: "glow"
+      buttonStyle: "glow",
+      googleAnalyticsId: ""
     };
     
     localBackupData.hero = {
