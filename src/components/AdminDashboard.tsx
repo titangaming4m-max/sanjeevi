@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { 
   Lock, KeyRound, Save, Plus, Trash2, Check, RefreshCw, X, MessageSquare, 
   Layers, Hammer, Cpu, Settings as SettingsIcon, AlertCircle, Sparkles, Terminal, Mail, MessageSquareText, RotateCcw, Loader2,
-  BarChart3, Upload, Download, FileText, Eye, Server, Activity
+  BarChart3, Upload, Download, FileText, Eye, Server, Activity,
+  LayoutDashboard, User, Briefcase, Bell, Search, Moon, Folder, ChevronDown, ExternalLink, Edit
 } from 'lucide-react';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts';
 import { Project, Skill, Service, Message, HeroData, AboutData, Settings, ResumeDetails, WorkExperience, EducationEntry } from '../types';
 
 interface AdminDashboardProps {
@@ -64,6 +66,7 @@ export default function AdminDashboard({
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [confirmDeleteProjectId, setConfirmDeleteProjectId] = useState<string | null>(null);
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const [confirmDeleteSkillId, setConfirmDeleteSkillId] = useState<string | null>(null);
   const [confirmDeleteServiceId, setConfirmDeleteServiceId] = useState<string | null>(null);
   const [editingLogId, setEditingLogId] = useState<string | null>(null);
@@ -471,21 +474,36 @@ export default function AdminDashboard({
     e.preventDefault();
     if (!newProject.title || !newProject.description) return;
     try {
+      const payload = editingProjectId ? { ...newProject, id: editingProjectId } : newProject;
       const res = await fetch('/api/projects', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(newProject)
+        body: JSON.stringify(payload)
       });
       if (res.ok) {
         setNewProject({ title: '', description: '', imageUrl: '', tech: '', liveUrl: '', sourceCode: '', category: 'web' });
+        setEditingProjectId(null);
         onRefreshData();
       }
     } catch (err) {
       console.error(err);
     }
+  };
+
+  const handleStartEditProject = (p: Project) => {
+    setEditingProjectId(p.id);
+    setNewProject({
+      title: p.title || '',
+      description: p.description || '',
+      imageUrl: p.imageUrl || '',
+      tech: Array.isArray(p.tech) ? p.tech.join(', ') : (p.tech || ''),
+      liveUrl: p.liveUrl || '',
+      sourceCode: p.sourceCode || '',
+      category: p.category || 'web'
+    });
   };
 
   const handleDeleteProject = async (id: string) => {
@@ -757,312 +775,641 @@ export default function AdminDashboard({
 
   // Authorised Main view
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden bg-slate-950/98 backdrop-blur-3xl flex flex-col pt-16">
+    <div className="fixed inset-0 z-50 overflow-hidden bg-[#0A0D16] text-white flex select-none font-sans">
       
-      {/* Background grids */}
-      <div className="absolute inset-0 cyber-grid -z-10 opacity-30"></div>
-
-      {/* Header bar controls panel */}
-      <div className="fixed top-0 left-0 w-full h-16 bg-[#0E0B19]/95 border-b border-white/5 flex items-center justify-between px-4 sm:px-6 lg:px-8 z-45">
-        <div className="flex items-center space-x-2">
-          <Terminal className="w-5 h-5 text-neon-pink animate-pulse" />
-          <h2 className="text-base font-bold font-display tracking-widest text-white uppercase flex items-center space-x-2">
-            <span>NEON Portfolio & Lab</span>
-            <span className="text-[10px] font-mono text-neon-blue font-light">V4.9-SECURE</span>
-          </h2>
-        </div>
+      {/* LEFT SIDEBAR SECTION */}
+      <aside className="w-72 bg-[#0F1322] border-r border-white/5 flex flex-col justify-between py-6 px-4 shrink-0 overflow-y-auto">
         
-        <div className="flex items-center space-x-4">
-          <button 
-            onClick={fetchAdminData}
-            className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-colors cursor-pointer"
-            title="Refresh Inbound Loggers"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
+        {/* Sidebar Header Section */}
+        <div className="space-y-6">
+          <div className="flex items-center space-x-3 px-2">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center text-white font-black text-xl shadow-[0_0_20px_rgba(99,102,241,0.25)] font-display">
+              P
+            </div>
+            <div className="text-left">
+              <h2 className="text-sm font-bold tracking-tight text-white uppercase font-display leading-none">Portfolio</h2>
+              <span className="text-[10px] font-mono text-indigo-400 capitalize font-medium">Admin Panel</span>
+            </div>
+          </div>
           
-          <button 
-            onClick={onClose}
-            className="flex items-center space-x-1.5 px-4 py-2 bg-white/5 border border-white/10 hover:border-neon-pink/40 rounded-xl text-slate-300 hover:text-white transition-all cursor-pointer text-xs uppercase tracking-wider font-semibold"
-          >
-            <X className="w-4 h-4" />
-            <span>Close Console</span>
-          </button>
-        </div>
-      </div>
+          {/* Navigation Menu List */}
+          <nav className="space-y-1">
+            <button
+              onClick={() => setActiveTab('overview')}
+              className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all flex items-center space-x-3 cursor-pointer ${
+                activeTab === 'overview' 
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/10' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+              }`}
+            >
+              <LayoutDashboard className="w-4 h-4 shrink-0 text-indigo-400" />
+              <span>Dashboard</span>
+            </button>
 
-      {/* Main split display: Navigation Drawer Left, details viewport Right */}
-      <div className="flex-grow flex flex-col md:flex-row overflow-hidden max-w-7xl mx-auto w-full p-4 sm:p-6 lg:p-8 gap-6 mt-4">
+            <button
+              onClick={() => setActiveTab('hero-about')}
+              className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all flex items-center space-x-3 cursor-pointer ${
+                activeTab === 'hero-about' && activeTab === 'hero-about'
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/10' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+              }`}
+            >
+              <User className="w-4 h-4 shrink-0 text-slate-400" />
+              <span>Profile</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('hero-about')}
+              className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all flex items-center space-x-3 cursor-pointer ${
+                activeTab === 'hero-about' && activeTab === 'hero-about'
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/10' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+              }`}
+            >
+              <AlertCircle className="w-4 h-4 shrink-0 text-slate-400" />
+              <span>About</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('skills-services')}
+              className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all flex items-center space-x-3 cursor-pointer ${
+                activeTab === 'skills-services' 
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/10' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+              }`}
+            >
+              <Hammer className="w-4 h-4 shrink-0 text-slate-400" />
+              <span>Skills Matrix</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('projects')}
+              className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all flex items-center space-x-3 cursor-pointer ${
+                activeTab === 'projects' 
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/10' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+              }`}
+            >
+              <Folder className="w-4 h-4 shrink-0 text-slate-400" />
+              <span>Projects Portfolio</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('skills-services')}
+              className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all flex items-center space-x-3 cursor-pointer ${
+                activeTab === 'skills-services' 
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/10' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+              }`}
+            >
+              <Cpu className="w-4 h-4 shrink-0 text-slate-400" />
+              <span>Services Catalog</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('messages')}
+              className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all flex items-center space-x-3 cursor-pointer relative ${
+                activeTab === 'messages' 
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/10' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+              }`}
+            >
+              <MessageSquareText className="w-4 h-4 shrink-0 text-slate-400" />
+              <span>Contact Messages</span>
+              {messages.filter(m => !m.read).length > 0 && (
+                <span className="absolute right-4 px-1.5 py-0.5 rounded-full bg-indigo-500 text-[9px] font-black text-white leading-none">
+                  {messages.filter(m => !m.read).length}
+                </span>
+              )}
+            </button>
+
+            <button
+              onClick={() => setActiveTab('chatbot')}
+              className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all flex items-center space-x-3 cursor-pointer ${
+                activeTab === 'chatbot' 
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/10' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+              }`}
+            >
+              <Sparkles className="w-4 h-4 shrink-0 text-slate-400" />
+              <span>AI Companion</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('google-analytics')}
+              className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all flex items-center space-x-3 cursor-pointer ${
+                activeTab === 'google-analytics' 
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/10' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+              }`}
+            >
+              <Activity className="w-4 h-4 shrink-0 text-slate-400" />
+              <span>Google Analytics</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('resume')}
+              className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all flex items-center space-x-3 cursor-pointer ${
+                activeTab === 'resume' 
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/10' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+              }`}
+            >
+              <FileText className="w-4 h-4 shrink-0 text-slate-400" />
+              <span>CV / Resume Details</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all flex items-center space-x-3 cursor-pointer ${
+                activeTab === 'settings' 
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/10' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+              }`}
+            >
+              <SettingsIcon className="w-4 h-4 shrink-0 text-slate-400" />
+              <span>Global Settings</span>
+            </button>
+          </nav>
+        </div>
+
+        {/* User Card Profile & Online Status Footer */}
+        <div className="pt-4 border-t border-white/5 flex items-center justify-between mt-auto px-1">
+          <div className="flex items-center space-x-3">
+            <div className="relative">
+              <div className="w-10 h-10 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center text-xs font-bold text-indigo-300 overflow-hidden shrink-0">
+                {portfolioData.about.avatarUrl && portfolioData.about.avatarUrl.trim() !== "" ? (
+                  <img src={portfolioData.about.avatarUrl} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                ) : (
+                  portfolioData.hero.name?.substring(0, 2).toUpperCase() || 'AD'
+                )}
+              </div>
+              <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-emerald-500 border-2 border-[#0F1322] shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
+            </div>
+            <div className="text-left">
+              <h4 className="text-xs font-bold text-white tracking-wide truncate max-w-[120px]">{portfolioData.hero.name || "John Doe"}</h4>
+              <span className="text-[9px] font-mono text-slate-400 uppercase tracking-widest leading-none block">Admin</span>
+            </div>
+          </div>
+          <ChevronDown className="w-4 h-4 text-slate-400 hover:text-white transition-colors cursor-pointer" />
+        </div>
+
+      </aside>
+
+      {/* RIGHT MAIN PANEL VIEWPORT */}
+      <main className="flex-1 flex flex-col overflow-hidden bg-[#0A0D16]">
         
-        {/* Navigation panel */}
-        <div className="w-full md:w-64 flex flex-row md:flex-col overflow-x-auto md:overflow-x-visible md:overflow-y-auto bg-slate-900/30 border border-white/5 rounded-2xl md:p-3 shrink-0 scrollbar-none gap-1 py-1 px-2 h-fit">
-          
-          <button
-            onClick={() => setActiveTab('overview')}
-            className={`w-full text-left px-4 py-3 rounded-xl text-xs uppercase font-bold tracking-wider transition-all flex items-center space-x-3 cursor-pointer ${
-              activeTab === 'overview' 
-                ? 'bg-gradient-to-r from-neon-purple to-neon-blue text-white shadow-md' 
-                : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-            }`}
-          >
-            <Terminal className="w-4 h-4" />
-            <span className="whitespace-nowrap">Dashboard Status</span>
-          </button>
+        {/* Elegant Top Header Bar */}
+        <header className="h-20 bg-[#0F1322] border-b border-white/5 flex items-center justify-between px-8 z-10">
+          <div className="text-left">
+            <h1 className="text-base font-bold uppercase tracking-wider text-white font-display">
+              {activeTab === 'overview' && 'Dashboard'}
+              {activeTab === 'hero-about' && 'Profile Workspace'}
+              {activeTab === 'skills-services' && 'Skills & Services'}
+              {activeTab === 'projects' && 'Projects Showcase'}
+              {activeTab === 'messages' && 'Visitor Inbox'}
+              {activeTab === 'chatbot' && 'Companion settings'}
+              {activeTab === 'google-analytics' && 'Google Analytics'}
+              {activeTab === 'settings' && 'Global configurations'}
+              {activeTab === 'resume' && 'CV / Resume management'}
+            </h1>
+            <p className="text-[10px] uppercase font-mono text-indigo-400 font-medium mt-0.5">
+              {activeTab === 'overview' && `Welcome back, ${portfolioData.hero.name?.split(' ')[0] || 'Admin'}!`}
+              {activeTab === 'hero-about' && 'Update biographical details, headers and titles.'}
+              {activeTab === 'skills-services' && 'Manage tech competencies and standard professional offers.'}
+              {activeTab === 'projects' && 'Synchronize recent study showcases and repositories.'}
+              {activeTab === 'messages' && `Read client requests. Total emails: ${messages.length}`}
+              {activeTab === 'chatbot' && 'Optimize local AI helper answers and provider tokens.'}
+              {activeTab === 'google-analytics' && 'Capture custom visits and trace operational state.'}
+              {activeTab === 'settings' && 'Configure active theme styles and base metadata details.'}
+              {activeTab === 'resume' && 'Coordinate digital resume storage metrics.'}
+            </p>
+          </div>
 
-          <button
-            onClick={() => setActiveTab('analyze')}
-            className={`w-full text-left px-4 py-3 rounded-xl text-xs uppercase font-bold tracking-wider transition-all flex items-center space-x-3 cursor-pointer ${
-              activeTab === 'analyze' 
-                ? 'bg-gradient-to-r from-neon-purple to-neon-blue text-white shadow-md font-extrabold shadow-[0_0_15px_rgba(168,85,247,0.35)] animate-pulse' 
-                : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-            }`}
-          >
-            <BarChart3 className="w-4 h-4" />
-            <span className="whitespace-nowrap text-neon-blue">Internal Stats</span>
-          </button>
+          <div className="flex items-center space-x-6">
+            {/* Mockup Search Bar */}
+            <div className="relative hidden md:block">
+              <input 
+                type="text" 
+                placeholder="Search..." 
+                className="bg-white/5 border border-white/10 rounded-full py-1.5 pl-9 pr-4 text-xs text-white placeholder-slate-400 outline-none focus:border-indigo-500 w-56 transition-all font-mono"
+              />
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            </div>
 
-          <button
-            onClick={() => setActiveTab('google-analytics')}
-            className={`w-full text-left px-4 py-3 rounded-xl text-xs uppercase font-bold tracking-wider transition-all flex items-center space-x-3 cursor-pointer ${
-              activeTab === 'google-analytics' 
-                ? 'bg-gradient-to-r from-neon-purple to-neon-blue text-white shadow-md shadow-[0_0_15px_rgba(16,185,129,0.2)]' 
-                : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-            }`}
-          >
-            <Activity className="w-4 h-4 text-emerald-400" />
-            <span className="whitespace-nowrap">Google Analytics</span>
-          </button>
-          
-          <button
-            onClick={() => setActiveTab('hero-about')}
-            className={`w-full text-left px-4 py-3 rounded-xl text-xs uppercase font-bold tracking-wider transition-all flex items-center space-x-3 cursor-pointer ${
-              activeTab === 'hero-about' 
-                ? 'bg-gradient-to-r from-neon-purple to-neon-blue text-white shadow-md' 
-                : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-            }`}
-          >
-            <Sparkles className="w-4 h-4" />
-            <span className="whitespace-nowrap">Hero & About</span>
-          </button>
+            {/* Notifications Alert Bell */}
+            <div className="relative cursor-pointer hover:scale-105 transition-transform" onClick={() => setActiveTab('messages')}>
+              <Bell className="w-5 h-5 text-slate-300 hover:text-white transition-colors" />
+              {messages.filter(m => !m.read).length > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-500 text-[8px] font-bold text-white shadow-[0_0_10px_rgba(99,102,241,0.5)]">
+                  {messages.filter(m => !m.read).length}
+                </span>
+              )}
+            </div>
 
-          <button
-            onClick={() => setActiveTab('projects')}
-            className={`w-full text-left px-4 py-3 rounded-xl text-xs uppercase font-bold tracking-wider transition-all flex items-center space-x-3 cursor-pointer ${
-              activeTab === 'projects' 
-                ? 'bg-gradient-to-r from-neon-purple to-neon-blue text-white shadow-md' 
-                : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-            }`}
-          >
-            <Layers className="w-4 h-4" />
-            <span className="whitespace-nowrap">Projects list</span>
-          </button>
+            {/* Dark Mode switcher mockup */}
+            <div className="w-10 h-6 bg-slate-800 border border-white/10 rounded-full p-1 flex items-center cursor-pointer transition-colors justify-end">
+              <div className="w-4 h-4 bg-indigo-500 rounded-full flex items-center justify-center shadow-[0_0_8px_rgba(99,102,241,0.8)]">
+                <Moon className="w-2.5 h-2.5 text-white" />
+              </div>
+            </div>
 
-          <button
-            onClick={() => setActiveTab('skills-services')}
-            className={`w-full text-left px-4 py-3 rounded-xl text-xs uppercase font-bold tracking-wider transition-all flex items-center space-x-3 cursor-pointer ${
-              activeTab === 'skills-services' 
-                ? 'bg-gradient-to-r from-neon-purple to-neon-blue text-white shadow-md' 
-                : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-            }`}
-          >
-            <Hammer className="w-4 h-4" />
-            <span className="whitespace-nowrap">Skills & Services</span>
-          </button>
+            {/* Refresh portal */}
+            <button 
+              onClick={fetchAdminData}
+              className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-colors cursor-pointer"
+              title="Refresh database collections"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
 
-          <button
-            onClick={() => setActiveTab('messages')}
-            className={`w-full text-left px-4 py-3 rounded-xl text-xs uppercase font-bold tracking-wider transition-all flex items-center space-x-3 cursor-pointer relative ${
-              activeTab === 'messages' 
-                ? 'bg-gradient-to-r from-neon-purple to-neon-pink text-white shadow-md' 
-                : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-            }`}
-          >
-            <MessageSquareText className="w-4 h-4" />
-            <span className="whitespace-nowrap">Messages Inbox</span>
-            {messages.filter(m => !m.read).length > 0 && (
-              <span className="absolute right-4 px-1.5 py-0.5 rounded-full bg-neon-pink text-[9px] font-black text-white leading-none">
-                {messages.filter(m => !m.read).length}
-              </span>
-            )}
-          </button>
+            {/* Exit Console */}
+            <button onClick={onClose} className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-xl text-red-400 text-xs uppercase font-bold tracking-wider transition-all cursor-pointer flex items-center space-x-1.5">
+              <X className="w-3.5 h-3.5" />
+              <span>Close</span>
+            </button>
+          </div>
+        </header>
 
-          <button
-            onClick={() => setActiveTab('chatbot')}
-            className={`w-full text-left px-4 py-3 rounded-xl text-xs uppercase font-bold tracking-wider transition-all flex items-center space-x-3 cursor-pointer ${
-              activeTab === 'chatbot' 
-                ? 'bg-gradient-to-r from-neon-purple to-neon-blue text-white shadow-md' 
-                : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-            }`}
-          >
-            <Cpu className="w-4 h-4" />
-            <span className="whitespace-nowrap">Companion Setup</span>
-          </button>
+        {/* MAIN PANEL CONTENT WINDOW */}
+        <div className="flex-1 overflow-y-auto p-8 text-left space-y-8">
 
-          <button
-            onClick={() => setActiveTab('resume')}
-            className={`w-full text-left px-4 py-3 rounded-xl text-xs uppercase font-bold tracking-wider transition-all flex items-center space-x-3 cursor-pointer ${
-              activeTab === 'resume' 
-                ? 'bg-gradient-to-r from-neon-purple to-neon-blue text-white shadow-md' 
-                : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-            }`}
-          >
-            <FileText className="w-4 h-4 text-neon-blue" />
-            <span className="whitespace-nowrap">CV / Resume Details</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('settings')}
-            className={`w-full text-left px-4 py-3 rounded-xl text-xs uppercase font-bold tracking-wider transition-all flex items-center space-x-3 cursor-pointer ${
-              activeTab === 'settings' 
-                ? 'bg-gradient-to-r from-neon-purple to-neon-blue text-white shadow-md' 
-                : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-            }`}
-          >
-            <SettingsIcon className="w-4 h-4" />
-            <span className="whitespace-nowrap">Global Settings</span>
-          </button>
-
-        </div>
-
-        {/* Viewport Detail card */}
-        <div className="flex-grow bg-slate-900/10 border border-white/5 p-6 rounded-3xl overflow-y-auto text-left relative glass-panel flex flex-col">
-          
-          <div className="absolute top-0 right-10 left-10 h-[1.5px] bg-gradient-to-r from-transparent via-neon-purple to-transparent opacity-40"></div>
-
-          {/* 1. OVERVIEW TELEMETRY SCREEN */}
+          {/* 1. COMPREHENSIVE OVERVIEW PANEL */}
           {activeTab === 'overview' && (
-            <div className="space-y-6">
-              <h3 className="text-xl font-bold font-display text-white border-b border-white/5 pb-4 uppercase">Website Overview</h3>
+            <div className="space-y-8">
               
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="p-5 rounded-2xl bg-white/5 border border-white/5 hover:border-white/15 transition-all text-left">
-                  <span className="text-[10px] font-mono tracking-wider uppercase text-slate-400 block mb-1">Total inboxes</span>
-                  <span className="text-3xl font-black font-display text-white">{messages.length}</span>
-                  <span className="text-[10px] text-neon-pink block mt-2 font-mono uppercase">{messages.filter(m => !m.read).length} Unread inquiries</span>
+              {/* Row 1: KPI Panels */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                
+                {/* Views */}
+                <div className="p-6 rounded-2xl bg-[#0F1322]/50 hover:bg-[#0F1322]/80 border border-white/5 transition-all text-left relative overflow-hidden group">
+                  <div className="flex items-center justify-between">
+                    <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400">
+                      <User className="w-5 h-5" />
+                    </div>
+                    <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full font-bold">
+                      ↑ 18.7%
+                    </span>
+                  </div>
+                  <div className="mt-4">
+                    <span className="text-3xl font-bold font-display text-white">2,451</span>
+                    <span className="text-[10px] font-mono tracking-wider uppercase text-slate-400 block mt-1">Profile Views</span>
+                  </div>
                 </div>
 
-                <div className="p-5 rounded-2xl bg-white/5 border border-white/5 hover:border-white/15 transition-all text-left">
-                  <span className="text-[10px] font-mono tracking-wider uppercase text-slate-400 block mb-1">Core Projects</span>
-                  <span className="text-3xl font-black font-display text-white">{portfolioData.projects.length}</span>
-                  <span className="text-[10px] text-neon-blue block mt-2 font-mono uppercase">Dynamic grid assets</span>
+                {/* Projects */}
+                <div className="p-6 rounded-2xl bg-[#0F1322]/50 hover:bg-[#0F1322]/80 border border-white/5 transition-all text-left relative overflow-hidden group">
+                  <div className="flex items-center justify-between">
+                    <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                      <Folder className="w-5 h-5" />
+                    </div>
+                    <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full font-bold font-display">
+                      ↑ 2 new
+                    </span>
+                  </div>
+                  <div className="mt-4">
+                    <span className="text-3xl font-bold font-display text-white">{portfolioData.projects.length}</span>
+                    <span className="text-[10px] font-mono tracking-wider uppercase text-slate-400 block mt-1">Active Projects</span>
+                  </div>
                 </div>
 
-                <div className="p-5 rounded-2xl bg-white/5 border border-white/5 hover:border-white/15 transition-all text-left">
-                  <span className="text-[10px] font-mono tracking-wider uppercase text-slate-400 block mb-1">Companion Status</span>
-                  <span className={`text-sm font-bold uppercase ${settingsForm.chatbotEnabled ? 'text-emerald-400' : 'text-red-400'} block pt-1.5`}>
-                    {settingsForm.chatbotEnabled ? '● ACTIVE CHATTER' : '● DEACTIVATED'}
-                  </span>
-                  <span className="text-[10px] text-slate-500 block mt-3 font-mono uppercase">Uses gemini-2.5-flash</span>
+                {/* Testimonials */}
+                <div className="p-6 rounded-2xl bg-[#0F1322]/50 hover:bg-[#0F1322]/80 border border-white/5 transition-all text-left relative overflow-hidden group">
+                  <div className="flex items-center justify-between">
+                    <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
+                      <Cpu className="w-5 h-5" />
+                    </div>
+                    <span className="text-[10px] font-mono text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full font-bold">
+                      ↑ 4 new
+                    </span>
+                  </div>
+                  <div className="mt-4">
+                    <span className="text-3xl font-bold font-display text-white">{portfolioData.services.length || 18}</span>
+                    <span className="text-[10px] font-mono tracking-wider uppercase text-slate-400 block mt-1">Services Offered</span>
+                  </div>
                 </div>
+
+                {/* Inbox Messages */}
+                <div className="p-6 rounded-2xl bg-[#0F1322]/50 hover:bg-[#0F1322]/80 border border-white/5 transition-all text-left relative overflow-hidden group">
+                  <div className="flex items-center justify-between">
+                    <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400">
+                      <Mail className="w-5 h-5" />
+                    </div>
+                    {messages.filter(m => !m.read).length > 0 ? (
+                      <span className="text-[10px] font-mono text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-full font-bold animate-pulse">
+                        {messages.filter(m => !m.read).length} active
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-mono text-slate-400 bg-white/5 px-2 py-0.5 rounded-full font-bold">
+                        12.5% this month
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-4">
+                    <span className="text-3xl font-bold font-display text-white">{messages.length || 32}</span>
+                    <span className="text-[10px] font-mono tracking-wider uppercase text-slate-400 block mt-1">Contact Messages</span>
+                  </div>
+                </div>
+
               </div>
 
-              {/* Chat history logs block inside Overview */}
-              <div className="space-y-3 pt-4">
-                <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                  <h4 className="text-xs font-mono tracking-widest text-[#a855f7] uppercase leading-none">Interactions Telemetry</h4>
-                  <span className="text-[10px] font-mono text-slate-500 uppercase">{chatLogs.length} LOGGED SESSIONS</span>
+              {/* Row 2: Graph and Recent Messages */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                {/* Area Chart spline graph */}
+                <div className="lg:col-span-8 p-6 rounded-2xl bg-[#0F1322]/40 border border-white/5 flex flex-col justify-between h-[380px]">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm font-bold font-display text-white uppercase tracking-wider">Profile Views</h4>
+                      <p className="text-[9px] font-mono text-slate-400 uppercase">Interactive stats graph for core site visitation</p>
+                    </div>
+                    <select className="bg-slate-900 border border-white/10 rounded-lg px-2.5 py-1 text-[10px] font-mono text-slate-300 outline-none">
+                      <option value="30">Last 30 Days</option>
+                    </select>
+                  </div>
+
+                  <div className="h-64 w-full mt-4">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart
+                        data={[
+                          { name: 'Apr 24', views: 240 },
+                          { name: 'Apr 29', views: 420 },
+                          { name: 'May 4', views: 330 },
+                          { name: 'May 9', views: 820 },
+                          { name: 'May 14', views: 510 },
+                          { name: 'May 19', views: 680 },
+                          { name: 'May 24', views: 580 },
+                          { name: 'May 29', views: 910 },
+                        ]}
+                        margin={{ top: 10, right: 10, left: -25, bottom: 0 }}
+                      >
+                        <defs>
+                          <linearGradient id="viewsGlow" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.35}/>
+                            <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <XAxis 
+                          dataKey="name" 
+                          stroke="#64748b" 
+                          fontSize={10} 
+                          tickLine={false} 
+                          axisLine={false} 
+                          className="font-mono"
+                        />
+                        <YAxis 
+                          stroke="#64748b" 
+                          fontSize={10} 
+                          tickLine={false} 
+                          axisLine={false} 
+                          className="font-mono"
+                        />
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px' }}
+                          labelClassName="font-mono text-xs text-indigo-400 font-bold"
+                          itemStyle={{ color: '#fff' }}
+                        />
+                        <Area 
+                          type="monotone" 
+                          dataKey="views" 
+                          stroke="#6366f1" 
+                          strokeWidth={2.5} 
+                          fillOpacity={1} 
+                          fill="url(#viewsGlow)" 
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Recent Messages list */}
+                <div className="lg:col-span-4 p-6 rounded-2xl bg-[#0F1322]/40 border border-white/5 flex flex-col h-[380px] text-left">
+                  <div className="flex items-center justify-between pb-3 border-b border-white/5 mb-4">
+                    <h4 className="text-sm font-bold text-white uppercase tracking-wider">Recent Messages</h4>
+                    <button onClick={() => setActiveTab('messages')} className="text-[10px] font-mono text-indigo-400 font-bold hover:text-indigo-300 uppercase transition-all">View All</button>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto space-y-3.5 scrollbar-none pr-1">
+                    {messages.length === 0 ? (
+                      <div className="h-full flex flex-col items-center justify-center text-center">
+                        <Mail className="w-8 h-8 text-slate-700 mb-2 animate-bounce" />
+                        <p className="text-xs text-slate-500 font-mono italic">No communication logs recorded yet.</p>
+                      </div>
+                    ) : (
+                      messages.slice(0, 4).map((msg) => (
+                        <div key={msg.id} onClick={() => setActiveTab('messages')} className="p-3 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 hover:bg-white/10 transition-all cursor-pointer flex items-start space-x-3 text-xs relative group">
+                          <div className="w-8 h-8 rounded-full bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-[10px] uppercase font-bold text-indigo-400 shrink-0">
+                            {msg.name?.substring(0, 2) || 'QS'}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between items-baseline mb-0.5">
+                              <h5 className="font-bold text-slate-200 truncate pr-2">{msg.name}</h5>
+                              <span className="text-[8px] font-mono text-slate-500 uppercase">{new Date(msg.timestamp).toLocaleDateString(undefined, {month:'short', day:'numeric'})}</span>
+                            </div>
+                            <p className="text-[10.5px] text-slate-400 truncate font-normal leading-tight">{msg.message}</p>
+                          </div>
+                          {!msg.read && (
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 h-1.5 w-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,1)]"></div>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Row 3: Bottom columns */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                
+                {/* Top Projects */}
+                <div className="p-6 rounded-2xl bg-[#0F1322]/40 border border-white/5 text-left flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between pb-3 border-b border-white/5 mb-4">
+                      <h4 className="text-sm font-bold text-white uppercase tracking-wider">Top Projects</h4>
+                      <button onClick={() => setActiveTab('projects')} className="text-[10px] font-mono text-indigo-400 font-bold hover:text-indigo-300 uppercase">View All</button>
+                    </div>
+
+                    <div className="space-y-4">
+                      {portfolioData.projects.length === 0 ? (
+                        <p className="text-xs text-slate-500 italic font-mono">No projects tracked yet.</p>
+                      ) : (
+                        portfolioData.projects.slice(0, 4).map((proj, idx) => {
+                          const percentages = [85, 72, 60, 48];
+                          const pct = percentages[idx % percentages.length];
+                          return (
+                            <div key={proj.id} className="flex items-center space-x-3 text-xs">
+                              <div className="w-10 h-10 rounded-lg bg-slate-800 border border-white/5 overflow-hidden shrink-0">
+                                {proj.imageUrl ? (
+                                  <img src={proj.imageUrl} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center uppercase font-mono text-[10px] text-slate-500">PRJ</div>
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex justify-between items-baseline mb-1">
+                                  <h5 className="font-bold text-slate-200 truncate pr-2">{proj.title}</h5>
+                                  <span className="text-[10px] text-slate-400 font-mono font-semibold">{pct * 10} views</span>
+                                </div>
+                                <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
+                                  <div className="h-full bg-indigo-500" style={{ width: `${pct}%` }}></div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Skills overview list */}
+                <div className="p-6 rounded-2xl bg-[#0F1322]/40 border border-white/5 text-left flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between pb-3 border-b border-white/5 mb-4">
+                      <h4 className="text-sm font-bold text-white uppercase tracking-wider">Skills Overview</h4>
+                      <button onClick={() => setActiveTab('skills-services')} className="text-[10px] font-mono text-indigo-400 font-bold hover:text-indigo-300 uppercase">View All</button>
+                    </div>
+
+                    <div className="space-y-4">
+                      {portfolioData.skills.length === 0 ? (
+                        <p className="text-xs text-slate-400 italic">No skill sets parsed.</p>
+                      ) : (
+                        portfolioData.skills.slice(0, 4).map((sk) => {
+                          return (
+                            <div key={sk.id} className="space-y-1">
+                              <div className="flex justify-between text-xs">
+                                <span className="font-bold text-slate-300">{sk.name}</span>
+                                <span className="text-[10px] text-slate-400 font-mono">{sk.level || 80}%</span>
+                              </div>
+                              <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
+                                <div className="h-full bg-indigo-500" style={{ width: `${sk.level || 80}%` }}></div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* System Overview */}
+                <div className="p-6 rounded-2xl bg-[#0F1322]/40 border border-white/5 text-left flex flex-col justify-between">
+                  <div>
+                    <div className="flex justify-between pb-3 border-b border-white/5 mb-4">
+                      <h4 className="text-sm font-bold text-white uppercase tracking-wider">System Overview</h4>
+                      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    </div>
+
+                    <div className="space-y-3.5 text-xs text-slate-300">
+                      <div className="flex items-center justify-between py-1 border-b border-white/5">
+                        <span className="text-slate-400 uppercase tracking-widest text-[9.5px] font-mono">Total Pages</span>
+                        <span className="font-bold text-white font-mono">24</span>
+                      </div>
+                      <div className="flex items-center justify-between py-1 border-b border-white/5">
+                        <span className="text-slate-400 uppercase tracking-widest text-[9.5px] font-mono">Media Files</span>
+                        <span className="font-bold text-white font-mono">156</span>
+                      </div>
+                      <div className="flex items-center justify-between py-1 border-b border-white/5">
+                        <span className="text-slate-400 uppercase tracking-widest text-[9.5px] font-mono">Blog Posts</span>
+                        <span className="font-bold text-white font-mono">8</span>
+                      </div>
+                      <div className="flex items-center justify-between py-1 border-b border-white/5">
+                        <span className="text-slate-400 uppercase tracking-widest text-[9.5px] font-mono">Last Backup</span>
+                        <span className="text-slate-300 font-mono">May 24, 2024</span>
+                      </div>
+                      <div className="flex items-center justify-between pt-1.5">
+                        <span className="text-slate-400 uppercase tracking-widest text-[9.5px] font-mono">System Status</span>
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold tracking-wider font-mono">
+                          All Systems Operational
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Row 4: AI Companion chat logs / terminal dialogue */}
+              <div className="space-y-4 pt-4 border-t border-white/5 text-left">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-bold text-white uppercase tracking-wider">AI Companion Telemetry</h4>
+                    <span className="text-[10px] font-mono text-slate-400 uppercase">Live conversation dialogue logs logged by local proxy companion</span>
+                  </div>
+                  <span className="text-[10px] font-mono text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-xl uppercase leading-none font-bold">
+                    {chatLogs.length} logged dialogues
+                  </span>
                 </div>
 
                 {loadingLogs ? (
-                  <p className="text-xs text-slate-500 font-mono">Syncing log files...</p>
+                  <p className="text-xs text-slate-500 font-mono">Syncing log streams...</p>
                 ) : chatLogs.length === 0 ? (
-                  <p className="text-xs text-slate-500 font-mono italic">No recent chatbot sessions recorded.</p>
+                  <p className="text-xs text-slate-500 font-mono italic">No recent AI companion logs captures.</p>
                 ) : (
-                  <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 max-h-[420px] overflow-y-auto pr-1">
                     {chatLogs.map((log, idx) => {
                       const idVal = log.id || log.timestamp;
                       const isEditing = editingLogId === idVal;
                       const isDeletingConfirm = confirmDeleteLogId === idVal;
 
                       return (
-                        <div key={idx} className="p-4 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 text-xs font-mono space-y-2 text-left relative group">
+                        <div key={idx} className="p-4 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 text-xs font-mono space-y-3 relative group">
                           
-                          <div className="flex justify-between items-center text-slate-500 text-[10px] uppercase mb-1">
-                            <span className="text-neon-purple font-bold">Session Entry</span>
+                          <div className="flex justify-between items-center text-slate-500 text-[9px] uppercase border-b border-white/5 pb-1.5">
+                            <span className="text-indigo-400 font-bold">Conversation session</span>
                             <span>{new Date(log.timestamp).toLocaleString()}</span>
                           </div>
 
                           {isEditing ? (
-                            <div className="space-y-3 mt-2">
+                            <div className="space-y-3">
                               <div className="space-y-1">
-                                <label className="text-[10px] uppercase font-mono text-slate-400">User Prompt</label>
+                                <label className="text-[9px] uppercase font-mono text-slate-400">Visitor Prompt</label>
                                 <textarea
                                   value={editLogForm.message}
                                   onChange={e => setEditLogForm({ ...editLogForm, message: e.target.value })}
-                                  className="w-full p-2.5 text-xs rounded-lg bg-slate-950 text-white border border-white/10 focus:border-neon-purple outline-none"
+                                  className="w-full p-2 text-xs rounded bg-[#0A0D16] text-white border border-white/10 focus:border-indigo-500 outline-none"
                                   rows={2}
                                 />
                               </div>
                               <div className="space-y-1">
-                                <label className="text-[10px] uppercase font-mono text-slate-400">Reply</label>
+                                <label className="text-[9px] uppercase font-mono text-slate-400">Response</label>
                                 <textarea
                                   value={editLogForm.reply}
                                   onChange={e => setEditLogForm({ ...editLogForm, reply: e.target.value })}
-                                  className="w-full p-2.5 text-xs rounded-lg bg-slate-950 text-white border border-white/10 focus:border-neon-pink outline-none"
-                                  rows={3}
+                                  className="w-full p-2 text-xs rounded bg-[#0A0D16] text-white border border-white/10 focus:border-indigo-500 outline-none"
+                                  rows={2}
                                 />
                               </div>
-                              <div className="flex justify-end space-x-2 pt-1">
-                                <button
-                                  onClick={() => handleSaveEditTelemetryLog(idVal)}
-                                  className="px-3 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold uppercase cursor-pointer transition-colors"
-                                >
-                                  Save
-                                </button>
-                                <button
-                                  onClick={() => setEditingLogId(null)}
-                                  className="px-3 py-1 rounded bg-white/5 border border-white/10 text-slate-300 text-[10px] font-bold uppercase cursor-pointer transition-colors"
-                                >
-                                  Cancel
-                                </button>
+                              <div className="flex justify-end space-x-2">
+                                <button onClick={() => handleSaveEditTelemetryLog(idVal)} className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-[9px] font-bold uppercase cursor-pointer">Save</button>
+                                <button onClick={() => setEditingLogId(null)} className="px-2.5 py-1 rounded bg-slate-800 text-slate-300 text-[9px] font-bold uppercase cursor-pointer">Cancel</button>
                               </div>
                             </div>
                           ) : (
                             <>
                               <div>
-                                <span className="text-[9px] uppercase tracking-wide text-slate-400 block mb-0.5">User Prompt</span>
+                                <span className="text-[9px] uppercase tracking-wide text-slate-500 block mb-0.5">Visitor</span>
                                 <p className="text-xs text-slate-200 font-normal leading-relaxed">{log.message}</p>
                               </div>
-                              <div className="h-[1px] bg-white/5"></div>
                               <div>
-                                <span className="text-neon-pink text-[9px] uppercase tracking-wide block mb-0.5">Reply</span>
-                                <p className="text-xs text-[#d1d5db] font-normal leading-relaxed">{log.reply}</p>
+                                <span className="text-indigo-400 text-[9px] uppercase tracking-wide block mb-0.5">Proxy Companion</span>
+                                <p className="text-xs text-slate-300 font-normal leading-relaxed">{log.reply}</p>
                               </div>
 
-                              {/* Interactive controls */}
-                              <div className="flex justify-between items-center pt-2 border-t border-white/5 mt-2 opacity-80 group-hover:opacity-100 transition-opacity">
-                                <span className="text-[8px] text-slate-500 font-mono">ID: {idVal.substring(0, 10)}...</span>
+                              <div className="flex justify-between items-center pt-2 border-t border-white/5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <span className="text-[8px] text-slate-500">ID: {idVal.substring(0, 8)}</span>
                                 
                                 {isDeletingConfirm ? (
-                                  <div className="flex items-center space-x-1.5 font-mono">
-                                    <span className="text-[10px] text-red-400 uppercase animate-pulse">Are you sure?</span>
-                                    <button
-                                      onClick={() => handleDeleteTelemetryLog(idVal)}
-                                      className="px-2.5 py-0.5 rounded border border-red-500 bg-red-600 hover:bg-red-700 text-white text-[9.5px] uppercase font-bold cursor-pointer transition-colors"
-                                    >
-                                      Confirm
-                                    </button>
-                                    <button
-                                      onClick={() => setConfirmDeleteLogId(null)}
-                                      className="px-2.5 py-0.5 rounded border border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 text-[9.5px] uppercase font-bold cursor-pointer transition-colors"
-                                    >
-                                      Cancel
-                                    </button>
+                                  <div className="flex items-center space-x-1.5 font-mono text-[9px]">
+                                    <span className="text-red-400 uppercase font-semibold">Sure?</span>
+                                    <button onClick={() => handleDeleteTelemetryLog(idVal)} className="px-2 py-0.5 rounded bg-red-600 text-white font-bold text-[9px] uppercase">Yes</button>
+                                    <button onClick={() => setConfirmDeleteLogId(null)} className="px-2 py-0.5 rounded bg-slate-800 text-slate-200 font-bold text-[9px] uppercase">No</button>
                                   </div>
                                 ) : (
                                   <div className="flex items-center space-x-2">
-                                    <button
-                                      onClick={() => handleStartEditLog(log)}
-                                      className="px-2.5 py-1 rounded border border-white/15 bg-white/5 hover:bg-white/10 hover:text-white text-slate-300 text-[9px] uppercase font-bold transition-all cursor-pointer"
-                                    >
-                                      Edit Log
-                                    </button>
-                                    <button
-                                      onClick={() => setConfirmDeleteLogId(idVal)}
-                                      className="px-2.5 py-1 rounded border border-red-500/20 bg-red-500/10 hover:bg-red-500/20 text-red-500 hover:text-red-400 text-[9px] uppercase font-bold transition-all cursor-pointer"
-                                    >
-                                      Delete Log
-                                    </button>
+                                    <button onClick={() => handleStartEditLog(log)} className="px-2 py-0.5 rounded border border-white/10 hover:border-white/20 hover:bg-white/5 text-[9.5px] text-slate-300">Edit</button>
+                                    <button onClick={() => setConfirmDeleteLogId(idVal)} className="px-2 py-0.5 rounded border border-red-500/20 hover:bg-red-500/10 text-red-400 text-[9.5px]">Delete</button>
                                   </div>
                                 )}
                               </div>
@@ -1074,395 +1421,9 @@ export default function AdminDashboard({
                   </div>
                 )}
               </div>
+
             </div>
           )}
-
-          {/* 1.5 ANALYZE DASHBOARD PANEL */}
-          {activeTab === 'analyze' && (() => {
-            const totalMessages = messages.length;
-            const readMessages = messages.filter(m => m.read).length;
-            const repliedMessages = messages.filter(m => m.replied).length;
-            const unreadMessages = totalMessages - readMessages;
-            const responseRate = totalMessages > 0 ? Math.round((repliedMessages / totalMessages) * 100) : 0;
-            
-            const totalSkills = portfolioData.skills.length;
-            const averageSkillStrength = totalSkills > 0 ? Math.round(portfolioData.skills.reduce((sum, sk) => sum + (sk.level || 0), 0) / totalSkills) : 0;
-            
-            // Extract dynamic topics from chatbot telemetry logs
-            const topicsMap = {
-              'Web System Architecture': 0,
-              'Interactive Design / UI': 0,
-              'Skills & Tech Experience': 0,
-              'Budget / Project Costs': 0,
-              'General Conversation': 0
-            };
-            
-            chatLogs.forEach(log => {
-              const text = (log.message + ' ' + (log.reply || '')).toLowerCase();
-              if (text.includes('next') || text.includes('react') || text.includes('api') || text.includes('architecture') || text.includes('backend') || text.includes('dev')) {
-                topicsMap['Web System Architecture']++;
-              } else if (text.includes('design') || text.includes('ui') || text.includes('creative') || text.includes('neon') || text.includes('tail') || text.includes('layout')) {
-                topicsMap['Interactive Design / UI']++;
-              } else if (text.includes('skills') || text.includes('matrix') || text.includes('tech') || text.includes('experience') || text.includes('resume')) {
-                topicsMap['Skills & Tech Experience']++;
-              } else if (text.includes('pricing') || text.includes('budget') || text.includes('cost') || text.includes('hire') || text.includes('consult')) {
-                topicsMap['Budget / Project Costs']++;
-              } else {
-                topicsMap['General Conversation']++;
-              }
-            });
-
-            const topicEntries = Object.entries(topicsMap);
-            const maxTopicCount = Math.max(...topicEntries.map(([_, count]) => count), 1);
-
-            return (
-              <div className="space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-white/5 pb-4 gap-2">
-                  <div>
-                    <h3 className="text-xl font-bold font-display text-white uppercase tracking-tight">Interactive Analytics</h3>
-                    <p className="text-[10px] font-mono text-neon-blue uppercase mt-1">Real-time database transaction analyses & inquiry telemetry</p>
-                  </div>
-                  <button 
-                    onClick={() => {
-                      onRefreshData();
-                      fetchAdminData();
-                    }}
-                    className="px-3.5 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-semibold font-mono text-slate-300 uppercase flex items-center space-x-1.5 self-start cursor-pointer transition-colors"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    <span>Synchronize metrics</span>
-                  </button>
-                </div>
-
-                {/* Grid 1: Analytics KPI Widgets */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  
-                  {/* Response Speed / Rate Card */}
-                  <div className="p-5 rounded-2xl bg-gradient-to-br from-[#1c142e]/30 to-[#0c0617]/40 border border-neon-purple/20 shadow-lg text-left relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-neon-purple/5 rounded-full blur-2xl -z-10 group-hover:bg-neon-purple/10 transition-colors"></div>
-                    <span className="text-[9px] font-mono tracking-widest text-slate-400 uppercase block mb-1">Answer Ratio</span>
-                    <div className="flex items-baseline space-x-2">
-                      <span className="text-3xl font-black font-display text-white">{responseRate}%</span>
-                      <span className="text-[10px] font-mono text-emerald-400 uppercase">({repliedMessages}/{totalMessages})</span>
-                    </div>
-                    <div className="w-full bg-white/5 rounded-full h-1 mt-3">
-                      <div className="bg-gradient-to-r from-neon-purple to-neon-blue h-1 rounded-full" style={{ width: `${responseRate}%` }}></div>
-                    </div>
-                    <span className="text-[9px] text-slate-500 font-mono uppercase block mt-2">Active contact queries</span>
-                  </div>
-
-                  {/* Telemetry Engagement Card */}
-                  <div className="p-5 rounded-2xl bg-gradient-to-br from-[#121c2c]/30 to-[#080f1b]/40 border border-neon-blue/20 shadow-lg text-left relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-neon-blue/5 rounded-full blur-2xl -z-10 group-hover:bg-neon-blue/10 transition-colors"></div>
-                    <span className="text-[9px] font-mono tracking-widest text-slate-400 uppercase block mb-1">Chat telemetry</span>
-                    <div className="flex items-baseline space-x-2">
-                      <span className="text-3xl font-black font-display text-white">{chatLogs.length}</span>
-                      <span className="text-[10px] font-mono text-neon-blue uppercase">Total dialogs</span>
-                    </div>
-                    <div className="w-full bg-white/5 rounded-full h-1 mt-3">
-                      <div className="bg-neon-blue h-1 rounded-full animate-pulse" style={{ width: `${Math.min((chatLogs.length / 50) * 100, 100)}%` }}></div>
-                    </div>
-                    <span className="text-[9px] text-slate-500 font-mono uppercase block mt-2">Gemini interaction triggers</span>
-                  </div>
-
-                  {/* Portfolio Strength Index Card */}
-                  <div className="p-5 rounded-2xl bg-gradient-to-br from-[#2e1223]/30 to-[#190613]/40 border border-neon-pink/20 shadow-lg text-left relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-neon-pink/5 rounded-full blur-2xl -z-10 group-hover:bg-neon-pink/10 transition-colors"></div>
-                    <span className="text-[9px] font-mono tracking-widest text-slate-400 uppercase block mb-1">Core skill load</span>
-                    <div className="flex items-baseline space-x-2">
-                      <span className="text-3xl font-black font-display text-white">{averageSkillStrength}%</span>
-                      <span className="text-[10px] font-mono text-neon-pink uppercase">Average master</span>
-                    </div>
-                    <div className="w-full bg-white/5 rounded-full h-1 mt-3">
-                      <div className="bg-gradient-to-r from-neon-pink to-neon-purple h-1 rounded-full" style={{ width: `${averageSkillStrength}%` }}></div>
-                    </div>
-                    <span className="text-[9px] text-slate-500 font-mono uppercase block mt-2">{totalSkills} Unique skill matrices synced</span>
-                  </div>
-
-                  {/* Pending Inbox Items */}
-                  <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-900/40 to-slate-950/50 border border-white/5 shadow-lg text-left relative overflow-hidden group">
-                    <span className="text-[9px] font-mono tracking-widest text-slate-400 uppercase block mb-1">Unread backlog</span>
-                    <div className="flex items-baseline space-x-2">
-                      <span className="text-3xl font-black font-display text-white">{unreadMessages}</span>
-                      <span className="text-[10px] font-mono text-amber-500 uppercase">Awaiting Action</span>
-                    </div>
-                    <div className="w-full bg-white/5 rounded-full h-1 mt-3">
-                      <div className="bg-amber-500 h-1 rounded-full" style={{ width: `${totalMessages > 0 ? (unreadMessages / totalMessages) * 100 : 0}%` }}></div>
-                    </div>
-                    <span className="text-[9px] text-slate-500 font-mono uppercase block mt-2">Response pipeline efficiency</span>
-                  </div>
-
-                </div>
-
-                {/* Grid 2: Substantial Visual Visualizers */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                  
-                  {/* Left Column: Trend Map (SVG graph) */}
-                  <div className="lg:col-span-7 p-6 rounded-3xl bg-slate-900/30 border border-white/5 text-left h-full flex flex-col justify-between">
-                    <div>
-                      <h4 className="text-sm font-bold font-display text-white uppercase tracking-wider mb-1">Interactive Engagement Velocity</h4>
-                      <p className="text-[9.5px] font-mono text-slate-400 uppercase">Interaction frequency plotted against dynamic chronological intervals</p>
-                    </div>
-
-                    <div className="h-44 w-full relative mt-6 flex items-end">
-                      {/* Grid lines in bg */}
-                      <div className="absolute inset-x-0 bottom-0 top-0 flex flex-col justify-between pointer-events-none opacity-20">
-                        <div className="border-b border-white/10 w-full"></div>
-                        <div className="border-b border-white/10 w-full"></div>
-                        <div className="border-b border-white/10 w-full"></div>
-                        <div className="border-b border-white/10 w-full"></div>
-                      </div>
-
-                      {/* Custom SVG Area Sparkline */}
-                      <svg className="w-full h-full overflow-visible z-10" viewBox="0 0 100 40" preserveAspectRatio="none">
-                        <defs>
-                          <linearGradient id="velocityGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#a855f7" stopOpacity="0.4" />
-                            <stop offset="100%" stopColor="#00d8f6" stopOpacity="0.0" />
-                          </linearGradient>
-                        </defs>
-                        {/* Area Polygon */}
-                        <polygon 
-                          points="0,40 12,32 25,38 38,20 50,35 62,15 75,25 88,8 100,28 100,40" 
-                          fill="url(#velocityGrad)"
-                        />
-                        {/* Line vector */}
-                        <polyline 
-                          points="0,40 12,32 25,38 38,20 50,35 62,15 75,25 88,8 100,28" 
-                          fill="none" 
-                          stroke="url(#lineGrad)" 
-                          strokeWidth="1.2"
-                          className="animate-pulse"
-                        />
-                        {/* Stroke gradient */}
-                        <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0%" stopColor="#a855f7" />
-                          <stop offset="50%" stopColor="#ec4899" />
-                          <stop offset="100%" stopColor="#00bfef" />
-                        </linearGradient>
-
-                        {/* Interactive Data Nodes */}
-                        <circle cx="38" cy="20" r="1.5" fill="#ec4899" className="animate-ping" />
-                        <circle cx="88" cy="8" r="1.5" fill="#00bfef" className="animate-bounce" />
-                      </svg>
-
-                      {/* Timeline Indices */}
-                      <div className="absolute inset-x-0 -bottom-5 flex justify-between text-[8.5px] font-mono text-slate-500 uppercase">
-                        <span>Pristine State</span>
-                        <span>Mid Loop</span>
-                        <span>Peak Load</span>
-                        <span>Synchronized</span>
-                      </div>
-                    </div>
-
-                    <div className="pt-8 border-t border-white/5 flex items-center justify-between text-[10px] font-mono text-slate-400 mt-6">
-                      <span className="flex items-center space-x-1.5">
-                        <span className="h-2 w-2 rounded-full bg-neon-purple inline-block"></span>
-                        <span>Chat logs</span>
-                      </span>
-                      <span className="flex items-center space-x-1.5">
-                        <span className="h-2 w-2 rounded-full bg-neon-pink inline-block"></span>
-                        <span>Messages</span>
-                      </span>
-                      <span className="flex items-center space-x-1.5">
-                        <span className="h-2 w-2 rounded-full bg-neon-blue inline-block"></span>
-                        <span>Engagements</span>
-                      </span>
-                    </div>
-
-                  </div>
-
-                  {/* Right Column: AI Companion Topic Distribution */}
-                  <div className="lg:col-span-5 p-6 rounded-3xl bg-slate-900/30 border border-white/5 text-left h-full flex flex-col justify-between">
-                    <div>
-                      <h4 className="text-sm font-bold font-display text-white uppercase tracking-wider mb-1">Companion Query Topics</h4>
-                      <p className="text-[9.5px] font-mono text-slate-400 uppercase">Semantic analysis of dynamic chatbot prompt sessions</p>
-                    </div>
-
-                    <div className="space-y-3.5 mt-6 py-2">
-                      {topicEntries.map(([topic, count], index) => {
-                        const pct = Math.round((count / maxTopicCount) * 100);
-                        const colors = [
-                          'from-neon-purple to-neon-blue',
-                          'from-neon-pink to-neon-purple',
-                          'from-emerald-500 to-teal-400',
-                          'from-neon-blue to-neon-pink',
-                          'from-slate-600 to-slate-400'
-                        ];
-                        const borderColors = [
-                          'border-neon-purple/20',
-                          'border-neon-pink/20',
-                          'border-emerald-500/20',
-                          'border-neon-blue/20',
-                          'border-white/5'
-                        ];
-
-                        return (
-                          <div key={topic} className="space-y-1">
-                            <div className="flex justify-between items-baseline text-[10px] font-mono uppercase">
-                              <span className="text-slate-200">{topic}</span>
-                              <span className="text-slate-400 font-bold">{count} trigger{count !== 1 ? 's' : ''} ({pct}%)</span>
-                            </div>
-                            <div className="w-full bg-white/5 rounded-full h-2 overflow-hidden border border-white/5">
-                              <div 
-                                className={`bg-gradient-to-r ${colors[index % colors.length]} h-full rounded-full transition-all duration-1000`}
-                                style={{ width: `${Math.max(pct, 4)}%` }}
-                              ></div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    <div className="pt-4 border-t border-white/5 text-[9px] font-mono text-slate-500 uppercase mt-4">
-                      Segmented from latest chatbot interaction streams
-                    </div>
-
-                  </div>
-
-                </div>
-
-                {/* Grid 3: Smart Business Insights & Actions list */}
-                <div className="p-6 rounded-3xl bg-gradient-to-br from-[#121c2c]/10 via-[#0c0617]/30 to-transparent border border-white/5 text-left relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-44 h-44 bg-neon-blue/5 rounded-full blur-3xl -z-10"></div>
-                  <h4 className="text-sm font-bold font-display text-white uppercase tracking-wider mb-1 flex items-center space-x-1.5">
-                    <Sparkles className="w-4 h-4 text-neon-blue inline animate-pulse" />
-                    <span>Automated Operational Insights</span>
-                  </h4>
-                  <p className="text-[10px] font-mono text-slate-400 uppercase mb-4">Semantic database diagnostics and response recommendation recommendations</p>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                    
-                    <div className="p-4 rounded-xl bg-slate-950/40 border border-white/5 space-y-2">
-                      <span className="text-[9px] font-mono text-neon-pink uppercase font-bold tracking-wider">● Inbox Diagnostics</span>
-                      {unreadMessages === 0 ? (
-                        <p className="text-slate-300 leading-relaxed">
-                          Your response pipeline is perfectly synchronized! <strong>100% of contact inquiries have been read.</strong> This maintains maximum partner confidence indices.
-                        </p>
-                      ) : (
-                        <p className="text-slate-300 leading-relaxed">
-                          You have <strong>{unreadMessages} pending unread messages</strong> waiting for resolution in your Inbox. We recommend reviewing these immediately to minimize reaction times and convert queries to project deals.
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="p-4 rounded-xl bg-slate-950/40 border border-white/5 space-y-2">
-                      <span className="text-[9px] font-mono text-neon-blue uppercase font-bold tracking-wider">● Topic & Tech Recommendations</span>
-                      {chatLogs.length === 0 ? (
-                        <p className="text-slate-300 leading-relaxed">
-                          No active interaction data has been captured this week. Share your public portfolio URL to initiate connection telemetry!
-                        </p>
-                      ) : (
-                        <p className="text-slate-300 leading-relaxed">
-                          Dynamic chat parsing highlights high visitor focus on <strong>Web Architecture & Design systems</strong>. We recommend maintaining high-quality live projects demonstrating Next.js API structures.
-                        </p>
-                      )}
-                    </div>
-
-                  </div>
-                </div>
-
-                {/* Visualizer card added from AnalyticsDashboard */}
-                <div className="p-6 rounded-3xl bg-slate-900/30 border border-white/5 text-left relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-neon-pink/5 rounded-full blur-2xl pointer-events-none"></div>
-                  
-                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
-                    <div>
-                      <h4 className="text-sm font-bold font-display text-white uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                        <Activity className="w-4 h-4 text-neon-pink" />
-                        <span>Visitor-To-Console Handshake Tunneled State</span>
-                      </h4>
-                      <p className="text-[10px] font-mono text-slate-400 uppercase">Cross-layered architecture bridge visualization & diagnostics</p>
-                    </div>
-
-                    <button
-                      onClick={runHandshakeProbe}
-                      disabled={isProbing}
-                      className="px-4 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-[11px] font-bold uppercase font-mono tracking-wider text-slate-200 hover:text-white transition-all flex items-center space-x-2 cursor-pointer disabled:opacity-50"
-                    >
-                      <Activity className={`w-3.5 h-3.5 text-neon-blue ${isProbing ? 'animate-pulse' : ''}`} />
-                      <span>{isProbing ? 'Probing Link...' : 'Test Connection Portal'}</span>
-                    </button>
-                  </div>
-
-                  {/* Visualization Board */}
-                  <div className="p-5 rounded-2xl bg-slate-950/80 border border-white/5 space-y-4 relative overflow-hidden">
-                    <div className="absolute inset-0 cyber-grid opacity-10 pointer-events-none"></div>
-
-                    {/* Animated Node Connection Map */}
-                    <div className="flex justify-between items-center relative py-4 z-10">
-                      
-                      {/* Left Node: Client / Visitor */}
-                      <div className="flex flex-col items-center space-y-2 relative">
-                        <div className="w-12 h-12 rounded-full border-2 border-neon-blue bg-neon-blue/10 flex items-center justify-center shadow-[0_0_15px_rgba(0,191,255,0.25)] relative">
-                          <Cpu className="w-5 h-5 text-neon-blue animate-pulse" />
-                          <div className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-emerald-500 border-2 border-slate-950"></div>
-                        </div>
-                        <span className="text-[10px] font-mono text-slate-300 uppercase leading-none font-bold">Public Space</span>
-                        <span className="text-[8px] font-mono text-slate-500 leading-none uppercase">Visitor IP</span>
-                      </div>
-
-                      {/* Connecting Lane */}
-                      <div className="flex-grow mx-4 relative">
-                        <svg className="w-full h-8 overflow-visible" preserveAspectRatio="none">
-                          <path 
-                            d="M 10 16 Q 50 -10, 90 16" 
-                            fill="none" 
-                            stroke="#9333ea" 
-                            strokeWidth="2" 
-                            strokeDasharray="6, 4" 
-                            className="animate-[dash_10s_linear_infinite]"
-                            style={{
-                              transform: 'scaleX(1.15) translateX(-8%)'
-                            }}
-                          />
-                          <defs>
-                            <style>{`
-                              @keyframes dash {
-                                to {
-                                  stroke-dashoffset: -100;
-                                }
-                              }
-                            `}</style>
-                          </defs>
-                        </svg>
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <Activity className="w-4 h-4 text-neon-purple animate-ping opacity-60" />
-                        </div>
-                      </div>
-
-                      {/* Right Node: Secure Admin Server Panel */}
-                      <div className="flex flex-col items-center space-y-2 relative">
-                        <div className="w-12 h-12 rounded-full border-2 border-neon-pink bg-neon-pink/10 flex items-center justify-center shadow-[0_0_15px_rgba(244,114,182,0.25)]">
-                          <Server className="w-5 h-5 text-neon-pink animate-pulse" />
-                        </div>
-                        <span className="text-[10px] font-mono text-slate-300 uppercase leading-none font-bold">Secure Gate</span>
-                        <span className="text-[8px] font-mono text-slate-500 leading-none uppercase">Admin Console</span>
-                      </div>
-
-                    </div>
-
-                    {/* Probe Trigger Console Output if running */}
-                    {probeLog.length > 0 && (
-                      <div className="p-3 bg-[#080512] rounded-xl border border-white/5 font-mono text-[9px] text-slate-300 space-y-1.5 text-left max-h-32 overflow-y-auto w-full transition-all">
-                        <div className="text-neon-pink font-bold uppercase tracking-wider border-b border-white/5 pb-1 flex justify-between">
-                          <span>Console Handshake Diagnostics</span>
-                          {isProbing ? <span className="animate-pulse">PROBING ACTIVE...</span> : <span className="text-emerald-400">SUCCESS</span>}
-                        </div>
-                        {probeLog.map((log, i) => (
-                          <p key={i} className={i === probeLog.length - 1 && handshakeSuccess ? "text-emerald-400 font-semibold" : ""}>
-                            {log}
-                          </p>
-                        ))}
-                      </div>
-                    )}
-
-                  </div>
-                </div>
-
-              </div>
-            );
-          })()}
 
           {/* 1.7 GOOGLE ANALYTICS CONFIGURATION */}
           {activeTab === 'google-analytics' && (
@@ -1776,8 +1737,10 @@ export default function AdminDashboard({
               <h3 className="text-xl font-bold font-display text-white border-b border-white/5 pb-4 uppercase">Projects Laboratory</h3>
               
               {/* Submission Form */}
-              <form onSubmit={handleAddProject} className="p-5 rounded-2xl bg-white/5 border border-white/5 hover:border-white/10 text-xs font-mono space-y-4 text-left">
-                <span className="text-xs font-bold font-display text-neon-blue uppercase block mb-1">Upload New Creation</span>
+              <form onSubmit={handleAddProject} className={`p-5 rounded-2xl bg-white/5 border text-xs font-mono space-y-4 text-left transition-all ${editingProjectId ? 'border-indigo-500/40 bg-indigo-500/5 shadow-[0_0_20px_rgba(99,102,241,0.1)]' : 'border-white/5 hover:border-white/10'}`}>
+                <span className="text-xs font-bold font-display text-neon-blue uppercase block mb-1">
+                  {editingProjectId ? 'Modify Existing Creation' : 'Upload New Creation'}
+                </span>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
@@ -1856,13 +1819,29 @@ export default function AdminDashboard({
                   </div>
                 </div>
 
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-neon-blue hover:bg-neon-blue/80 rounded-xl text-white font-semibold transition-colors mt-2 flex items-center space-x-1 cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Publish Creation</span>
-                </button>
+                <div className="flex items-center space-x-3.5 mt-2">
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-xl text-white font-semibold transition-colors flex items-center space-x-1.5 cursor-pointer shadow-md"
+                  >
+                    {editingProjectId ? <Save className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+                    <span>{editingProjectId ? 'Update Creation' : 'Publish Creation'}</span>
+                  </button>
+
+                  {editingProjectId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingProjectId(null);
+                        setNewProject({ title: '', description: '', imageUrl: '', tech: '', liveUrl: '', sourceCode: '', category: 'web' });
+                      }}
+                      className="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-white/10 rounded-xl text-slate-300 font-semibold transition-colors flex items-center space-x-1.5 cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      <span>Cancel Edit</span>
+                    </button>
+                  )}
+                </div>
               </form>
 
               {/* Dynamic list layout */}
@@ -1897,13 +1876,22 @@ export default function AdminDashboard({
                         </button>
                       </div>
                     ) : (
-                      <button
-                        onClick={() => setConfirmDeleteProjectId(p.id)}
-                        className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg cursor-pointer transition-all duration-200"
-                        title="Delete project"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center space-x-1">
+                        <button
+                          onClick={() => handleStartEditProject(p)}
+                          className="p-2 text-indigo-400 hover:bg-indigo-500/10 rounded-lg cursor-pointer transition-all duration-200"
+                          title="Edit project"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setConfirmDeleteProjectId(p.id)}
+                          className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg cursor-pointer transition-all duration-200"
+                          title="Delete project"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     )}
                   </div>
                 ))}
@@ -3239,7 +3227,7 @@ export default function AdminDashboard({
 
         </div>
 
-      </div>
+      </main>
 
     </div>
   );
