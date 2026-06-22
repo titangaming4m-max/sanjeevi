@@ -171,6 +171,36 @@ export default function App() {
     }
   }, [activeTheme, customColors]);
 
+  // Google Analytics Initialization & Tracking
+  useEffect(() => {
+    const gaId = portfolio.settings?.googleAnalyticsId;
+    if (gaId && gaId.trim().startsWith('G-')) {
+      // Check if scripts already exist to avoid duplication
+      const existingScript = document.querySelector(`script[src*="googletagmanager.com/gtag/js?id=${gaId}"]`);
+      if (!existingScript) {
+        const script1 = document.createElement('script');
+        script1.async = true;
+        script1.src = `https://www.googletagmanager.com/gtag/js?id=${gaId}`;
+        document.head.appendChild(script1);
+
+        const script2 = document.createElement('script');
+        script2.id = 'ga-tracking-script';
+        script2.innerHTML = `
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', '${gaId}');
+        `;
+        document.head.appendChild(script2);
+
+        return () => {
+          if (document.head.contains(script1)) document.head.removeChild(script1);
+          if (document.head.contains(script2)) document.head.removeChild(script2);
+        };
+      }
+    }
+  }, [portfolio.settings?.googleAnalyticsId]);
+
   const handleLoginSuccess = (token: string) => {
     localStorage.setItem('neon_admin_token', token);
     setAdminToken(token);

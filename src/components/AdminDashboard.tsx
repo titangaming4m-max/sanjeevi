@@ -36,7 +36,7 @@ export default function AdminDashboard({
   const [loggingIn, setLoggingIn] = useState(false);
 
   // Tabs
-  const [activeTab, setActiveTab] = useState<'overview' | 'analyze' | 'hero-about' | 'projects' | 'skills-services' | 'messages' | 'chatbot' | 'settings' | 'resume'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'analyze' | 'google-analytics' | 'hero-about' | 'projects' | 'skills-services' | 'messages' | 'chatbot' | 'settings' | 'resume'>('overview');
 
   // Resume details editing states
   const [resumeForm, setResumeForm] = useState<ResumeDetails>({
@@ -818,7 +818,19 @@ export default function AdminDashboard({
             }`}
           >
             <BarChart3 className="w-4 h-4" />
-            <span className="whitespace-nowrap text-neon-blue">Analyze Panel</span>
+            <span className="whitespace-nowrap text-neon-blue">Internal Stats</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('google-analytics')}
+            className={`w-full text-left px-4 py-3 rounded-xl text-xs uppercase font-bold tracking-wider transition-all flex items-center space-x-3 cursor-pointer ${
+              activeTab === 'google-analytics' 
+                ? 'bg-gradient-to-r from-neon-purple to-neon-blue text-white shadow-md shadow-[0_0_15px_rgba(16,185,129,0.2)]' 
+                : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+            }`}
+          >
+            <Activity className="w-4 h-4 text-emerald-400" />
+            <span className="whitespace-nowrap">Google Analytics</span>
           </button>
           
           <button
@@ -1452,7 +1464,96 @@ export default function AdminDashboard({
             );
           })()}
 
-          {/* 2. HERO & ABOUT EDIT CHANNEL */}
+          {/* 1.7 GOOGLE ANALYTICS CONFIGURATION */}
+          {activeTab === 'google-analytics' && (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center border-b border-white/5 pb-4">
+                <div>
+                  <h3 className="text-xl font-bold font-display text-white uppercase tracking-tight">Google Analytics</h3>
+                  <p className="text-[10px] font-mono text-emerald-400 uppercase mt-1">Configure external visitor tracking & engagement metrics</p>
+                </div>
+                <button 
+                  onClick={saveGlobalSettings}
+                  disabled={savingState}
+                  className="px-4 py-2 bg-emerald-600 rounded-xl text-xs text-white font-bold tracking-wider uppercase transition-all shadow-[0_0_15px_rgba(16,185,129,0.15)] hover:bg-emerald-700 cursor-pointer"
+                >
+                  <Save className="w-3.5 h-3.5 inline mr-1" />
+                  <span>{savingState && saveSuccess === 'settings' ? 'Saving...' : 'Sync Tracker'}</span>
+                </button>
+              </div>
+
+              {saveSuccess === 'settings' && <p className="text-xs text-emerald-400 font-mono uppercase">✔ Analytics Tracking ID successfully synchronized!</p>}
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="space-y-5">
+                  <div className="p-6 rounded-2xl bg-white/5 border border-white/5 space-y-4 text-left">
+                    <h4 className="text-xs font-mono font-bold text-neon-blue uppercase">Tracking Configuration</h4>
+                    <div className="space-y-2">
+                       <label className="text-[10px] font-mono text-slate-400 uppercase block">Google Analytics Measurement ID</label>
+                       <div className="relative">
+                         <input 
+                           type="text" 
+                           placeholder="G-XXXXXXXXXX"
+                           value={settingsForm.googleAnalyticsId || ''}
+                           onChange={e => setSettingsForm({ ...settingsForm, googleAnalyticsId: e.target.value })}
+                           className="w-full px-4 py-3 text-sm rounded-xl bg-slate-950 text-white border border-white/10 focus:border-neon-purple outline-none font-mono"
+                         />
+                         <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                           <Activity className="w-4 h-4 text-emerald-500/50" />
+                         </div>
+                       </div>
+                       <p className="text-[9px] font-mono text-slate-500 uppercase mt-2 italic">
+                         * Format usually starts with 'G-'. This will automatically inject the gtag.js script into your live site.
+                       </p>
+                    </div>
+                  </div>
+
+                  <div className="p-6 rounded-2xl bg-slate-900/40 border border-white/5 text-left space-y-3">
+                    <h4 className="text-xs font-mono font-bold text-neon-pink uppercase">Quick Guide</h4>
+                    <ul className="space-y-2.5 text-xs text-slate-300">
+                      <li className="flex items-start space-x-2">
+                        <span className="h-1.5 w-1.5 rounded-full bg-neon-purple mt-1.5 flex-shrink-0"></span>
+                        <span>Log in to your <strong>Google Analytics Console</strong>.</span>
+                      </li>
+                      <li className="flex items-start space-x-2">
+                        <span className="h-1.5 w-1.5 rounded-full bg-neon-purple mt-1.5 flex-shrink-0"></span>
+                        <span>Navigate to <strong>Admin → Data Streams</strong>.</span>
+                      </li>
+                      <li className="flex items-start space-x-2">
+                        <span className="h-1.5 w-1.5 rounded-full bg-neon-purple mt-1.5 flex-shrink-0"></span>
+                        <span>Select your Web stream and copy the <strong>Measurement ID</strong>.</span>
+                      </li>
+                      <li className="flex items-start space-x-2">
+                        <span className="h-1.5 w-1.5 rounded-full bg-neon-purple mt-1.5 flex-shrink-0"></span>
+                        <span>Paste it here and click <strong>Sync Tracker</strong>.</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="p-6 rounded-3xl bg-gradient-to-br from-emerald-500/5 to-transparent border border-emerald-500/10 flex flex-col items-center justify-center text-center space-y-4">
+                  <div className="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.1)]">
+                    <Activity className="w-10 h-10 text-emerald-400 animate-pulse" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-1">Live Tracking Activated</h4>
+                    <p className="text-[10px] font-mono text-slate-400 uppercase max-w-[240px] leading-relaxed">
+                      Your portfolio is currently bridging to Google’s global analytics infrastructure.
+                    </p>
+                  </div>
+                  <div className="w-full bg-white/5 rounded-2xl p-4 border border-white/5 text-left">
+                     <div className="flex items-center justify-between text-[9px] font-mono text-slate-500 uppercase mb-2">
+                        <span>Bridge Status</span>
+                        <span className="text-emerald-500 font-bold">● Operational</span>
+                     </div>
+                     <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                        <div className="h-full bg-emerald-500 w-[85%] rounded-full opacity-80"></div>
+                     </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
           {activeTab === 'hero-about' && (
             <div className="space-y-6">
               
