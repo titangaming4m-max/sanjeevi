@@ -4,9 +4,11 @@ import { AboutData } from '../types';
 
 interface ContactProps {
   aboutData: AboutData;
+  prefilledSubject?: string;
+  prefilledMessage?: string;
 }
 
-export default function Contact({ aboutData }: ContactProps) {
+export default function Contact({ aboutData, prefilledSubject, prefilledMessage }: ContactProps) {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -14,6 +16,18 @@ export default function Contact({ aboutData }: ContactProps) {
     phone: '',
     message: ''
   });
+
+  React.useEffect(() => {
+    if (prefilledSubject !== undefined) {
+      setFormData(prev => ({ ...prev, subject: prefilledSubject }));
+    }
+  }, [prefilledSubject]);
+
+  React.useEffect(() => {
+    if (prefilledMessage !== undefined) {
+      setFormData(prev => ({ ...prev, message: prefilledMessage }));
+    }
+  }, [prefilledMessage]);
 
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');

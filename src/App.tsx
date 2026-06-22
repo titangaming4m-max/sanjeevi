@@ -70,6 +70,21 @@ export default function App() {
   const [adminToken, setAdminToken] = useState<string | null>(localStorage.getItem('neon_admin_token'));
   const [loading, setLoading] = useState(true);
 
+  // Service Inquiry prefill states
+  const [prefilledSubject, setPrefilledSubject] = useState<string>('');
+  const [prefilledMessage, setPrefilledMessage] = useState<string>('');
+
+  const handleInquireService = (serviceTitle: string, prefillMsg: string) => {
+    setPrefilledSubject(`Inquiry: ${serviceTitle}`);
+    setPrefilledMessage(prefillMsg);
+    setTimeout(() => {
+      const contactSection = document.getElementById('contact');
+      if (contactSection) {
+        contactSection.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 50);
+  };
+
   // Core dynamic portfolios models
   const [portfolio, setPortfolio] = useState<{
     settings: Settings;
@@ -289,12 +304,19 @@ export default function App() {
       <Projects projects={portfolio.projects} />
 
       {/* services module catalog */}
-      <Services services={portfolio.services} />
+      <Services 
+        services={portfolio.services} 
+        onInquireService={handleInquireService}
+      />
 
 
 
       {/* secure customer transmission portal */}
-      <Contact aboutData={portfolio.about} />
+      <Contact 
+        aboutData={portfolio.about} 
+        prefilledSubject={prefilledSubject}
+        prefilledMessage={prefilledMessage}
+      />
 
       {/* Footer controls & locks */}
       <footer className="py-12 border-t border-white/5 bg-[#050309] relative">
