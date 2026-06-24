@@ -3,7 +3,7 @@ import {
   Lock, KeyRound, Save, Plus, Trash2, Check, RefreshCw, X, MessageSquare, 
   Layers, Hammer, Cpu, Settings as SettingsIcon, AlertCircle, Sparkles, Terminal, Mail, MessageSquareText, RotateCcw, Loader2,
   BarChart3, Upload, Download, FileText, Eye, Server, Activity,
-  LayoutDashboard, User, Briefcase, Bell, Search, Moon, Folder, ChevronDown, ExternalLink, Edit
+  LayoutDashboard, User, Briefcase, Bell, Search, Moon, Sun, Folder, ChevronDown, ExternalLink, Edit
 } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts';
 import { Project, Skill, Service, Message, HeroData, AboutData, Settings, ResumeDetails, WorkExperience, EducationEntry } from '../types';
@@ -69,9 +69,25 @@ export default function AdminDashboard({
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const [confirmDeleteSkillId, setConfirmDeleteSkillId] = useState<string | null>(null);
   const [confirmDeleteServiceId, setConfirmDeleteServiceId] = useState<string | null>(null);
+  const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
+  const [editingSkillId, setEditingSkillId] = useState<string | null>(null);
   const [editingLogId, setEditingLogId] = useState<string | null>(null);
   const [editLogForm, setEditLogForm] = useState({ message: '', reply: '' });
   const [confirmDeleteLogId, setConfirmDeleteLogId] = useState<string | null>(null);
+
+  // Admin Theme state (Dark vs Lite mode)
+  const [adminTheme, setAdminTheme] = useState<'dark' | 'light'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('admin-theme') as 'dark' | 'light') || 'dark';
+    }
+    return 'dark';
+  });
+
+  const toggleAdminTheme = () => {
+    const nextTheme = adminTheme === 'dark' ? 'light' : 'dark';
+    setAdminTheme(nextTheme);
+    localStorage.setItem('admin-theme', nextTheme);
+  };
 
   // Dynamic Item Form States
   const [newProject, setNewProject] = useState({
@@ -102,14 +118,27 @@ export default function AdminDashboard({
   const [isProbing, setIsProbing] = useState(false);
   const [handshakeSuccess, setHandshakeSuccess] = useState(false);
 
+  const safeParseJson = async (res: Response, fallbackValue: any = null) => {
+    if (!res.ok) return fallbackValue;
+    const contentType = res.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      console.warn(`Expected JSON but received non-JSON response from ${res.url}`);
+      return fallbackValue;
+    }
+    try {
+      return await res.json();
+    } catch (err) {
+      console.error(`Failed to parse JSON from ${res.url}:`, err);
+      return fallbackValue;
+    }
+  };
+
   const fetchResumeInfo = async () => {
     try {
       const res = await fetch('/api/resume/info');
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success) {
-          setResumeInfo(data);
-        }
+      const data = await safeParseJson(res);
+      if (data && data.success) {
+        setResumeInfo(data);
       }
     } catch (err) {
       console.error("Failed to fetch resume details:", err);
@@ -196,16 +225,16 @@ export default function AdminDashboard({
       const msgsRes = await fetch('/api/messages', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      const msgs = await msgsRes.json();
-      if (Array.isArray(msgs)) setMessages(msgs);
+      const msgs = await safeParseJson(msgsRes);
+      if (msgs && Array.isArray(msgs)) setMessages(msgs);
 
       // Fetch chatbot interaction logs
       setLoadingLogs(true);
       const logsRes = await fetch('/api/chat/history', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      const logs = await logsRes.json();
-      if (Array.isArray(logs)) setChatLogs(logs);
+      const logs = await safeParseJson(logsRes);
+      if (logs && Array.isArray(logs)) setChatLogs(logs);
 
       // Fetch structured resume details
       await fetchResumeDetailsData();
@@ -221,12 +250,10 @@ export default function AdminDashboard({
     setLoadingResumeDetails(true);
     try {
       const res = await fetch('/api/resume/details');
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success && json.data) {
-          setResumeForm(json.data);
-          setResumeSkillsText(json.data.skills ? json.data.skills.join(', ') : '');
-        }
+      const json = await safeParseJson(res);
+      if (json && json.success && json.data) {
+        setResumeForm(json.data);
+        setResumeSkillsText(json.data.skills ? json.data.skills.join(', ') : '');
       }
     } catch (err) {
       console.error('Failed to load structured resume in admin dashboard:', err);
@@ -526,16 +553,21 @@ export default function AdminDashboard({
     e.preventDefault();
     if (!newSkill.name) return;
     try {
+      const payload = editingSkillId 
+        ? { id: editingSkillId, ...newSkill } 
+        : newSkill;
+
       const res = await fetch('/api/skills', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(newSkill)
+        body: JSON.stringify(payload)
       });
       if (res.ok) {
         setNewSkill({ name: '', level: 80, category: 'frontend' });
+        setEditingSkillId(null);
         onRefreshData();
       }
     } catch (err) {
@@ -563,16 +595,21 @@ export default function AdminDashboard({
     e.preventDefault();
     if (!newService.title || !newService.description) return;
     try {
+      const payload = editingServiceId 
+        ? { id: editingServiceId, ...newService } 
+        : newService;
+
       const res = await fetch('/api/services', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(newService)
+        body: JSON.stringify(payload)
       });
       if (res.ok) {
         setNewService({ icon: 'Code', title: '', description: '' });
+        setEditingServiceId(null);
         onRefreshData();
       }
     } catch (err) {
@@ -775,7 +812,7 @@ export default function AdminDashboard({
 
   // Authorised Main view
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden bg-[#0A0D16] text-white flex select-none font-sans">
+    <div className={`fixed inset-0 z-50 overflow-hidden ${adminTheme === 'light' ? 'admin-lite' : ''} bg-[#0A0D16] text-white flex select-none font-sans`}>
       
       {/* LEFT SIDEBAR SECTION */}
       <aside className="w-72 bg-[#0F1322] border-r border-white/5 flex flex-col justify-between py-6 px-4 shrink-0 overflow-y-auto">
@@ -1007,12 +1044,26 @@ export default function AdminDashboard({
               )}
             </div>
 
-            {/* Dark Mode switcher mockup */}
-            <div className="w-10 h-6 bg-slate-800 border border-white/10 rounded-full p-1 flex items-center cursor-pointer transition-colors justify-end">
-              <div className="w-4 h-4 bg-indigo-500 rounded-full flex items-center justify-center shadow-[0_0_8px_rgba(99,102,241,0.8)]">
-                <Moon className="w-2.5 h-2.5 text-white" />
+            {/* Dark Mode / Lite Mode switcher */}
+            <button 
+              onClick={toggleAdminTheme}
+              className={`w-10 h-6 rounded-full p-0.5 flex items-center cursor-pointer transition-all duration-300 relative border ${
+                adminTheme === 'light' 
+                  ? 'bg-slate-200 border-slate-300' 
+                  : 'bg-slate-800 border-white/10'
+              }`}
+              title={adminTheme === 'light' ? 'Switch to Dark Mode' : 'Switch to Lite Mode'}
+            >
+              <div className={`w-4.5 h-4.5 bg-indigo-600 rounded-full flex items-center justify-center shadow-md transition-all duration-300 absolute ${
+                adminTheme === 'light' ? 'left-0.5' : 'left-4.5'
+              }`}>
+                {adminTheme === 'light' ? (
+                  <Sun className="w-2.5 h-2.5 text-white" />
+                ) : (
+                  <Moon className="w-2.5 h-2.5 text-white" />
+                )}
               </div>
-            </div>
+            </button>
 
             {/* Refresh portal */}
             <button 
@@ -1946,12 +1997,26 @@ export default function AdminDashboard({
                       <option value="other">Creative Design</option>
                     </select>
                   </div>
-                  <button
-                    type="submit"
-                    className="px-4 py-1.5 bg-neon-purple text-white rounded-lg font-semibold hover:bg-neon-purple/80 cursor-pointer"
-                  >
-                    <span>Add Skill</span>
-                  </button>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      type="submit"
+                      className="px-4 py-1.5 bg-neon-purple text-white rounded-lg font-semibold hover:bg-neon-purple/80 cursor-pointer transition-all"
+                    >
+                      <span>{editingSkillId ? 'Update Skill' : 'Add Skill'}</span>
+                    </button>
+                    {editingSkillId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingSkillId(null);
+                          setNewSkill({ name: '', level: 80, category: 'frontend' });
+                        }}
+                        className="px-3 py-1.5 bg-white/5 border border-white/10 hover:bg-white/10 text-slate-300 rounded-lg cursor-pointer font-semibold transition-all"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
                 </form>
 
                 {/* Skills render list */}
@@ -1981,13 +2046,25 @@ export default function AdminDashboard({
                           </button>
                         </div>
                       ) : (
-                        <button
-                          onClick={() => setConfirmDeleteSkillId(sk.id)}
-                          className="p-1.5 text-red-400 hover:bg-red-500/10 rounded-lg cursor-pointer"
-                          title="Delete skill"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        <div className="flex items-center space-x-1">
+                          <button
+                            onClick={() => {
+                              setEditingSkillId(sk.id);
+                              setNewSkill({ name: sk.name, level: sk.level, category: sk.category });
+                            }}
+                            className="p-1.5 text-indigo-400 hover:bg-indigo-500/10 rounded-lg cursor-pointer transition-all"
+                            title="Edit skill"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => setConfirmDeleteSkillId(sk.id)}
+                            className="p-1.5 text-red-400 hover:bg-red-500/10 rounded-lg cursor-pointer transition-all"
+                            title="Delete skill"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       )}
                     </div>
                   ))}
@@ -2038,12 +2115,26 @@ export default function AdminDashboard({
                       />
                     </div>
                   </div>
-                  <button
-                    type="submit"
-                    className="px-4 py-1.5 bg-neon-blue text-white rounded-lg font-semibold hover:bg-neon-blue/80 cursor-pointer"
-                  >
-                    <span>Publish Service</span>
-                  </button>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      type="submit"
+                      className="px-4 py-1.5 bg-neon-blue text-white rounded-lg font-semibold hover:bg-neon-blue/80 cursor-pointer transition-all"
+                    >
+                      <span>{editingServiceId ? 'Update Service' : 'Publish Service'}</span>
+                    </button>
+                    {editingServiceId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingServiceId(null);
+                          setNewService({ icon: 'Code', title: '', description: '' });
+                        }}
+                        className="px-3 py-1.5 bg-white/5 border border-white/10 hover:bg-white/10 text-slate-300 rounded-lg cursor-pointer font-semibold transition-all"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
                 </form>
 
                 {/* Services render list */}
@@ -2070,13 +2161,25 @@ export default function AdminDashboard({
                           </button>
                         </div>
                       ) : (
-                        <button
-                          onClick={() => setConfirmDeleteServiceId(sv.id)}
-                          className="p-1.5 text-red-400 hover:bg-red-500/10 rounded-lg cursor-pointer"
-                          title="Delete service"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        <div className="flex items-center space-x-1">
+                          <button
+                            onClick={() => {
+                              setEditingServiceId(sv.id);
+                              setNewService({ icon: sv.icon || 'Code', title: sv.title, description: sv.description });
+                            }}
+                            className="p-1.5 text-indigo-400 hover:bg-indigo-500/10 rounded-lg cursor-pointer transition-all"
+                            title="Edit service"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => setConfirmDeleteServiceId(sv.id)}
+                            className="p-1.5 text-red-400 hover:bg-red-500/10 rounded-lg cursor-pointer transition-all"
+                            title="Delete service"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       )}
                     </div>
                   ))}
