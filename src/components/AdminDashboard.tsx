@@ -1942,6 +1942,7 @@ export default function AdminDashboard({
                     >
                       <option value="frontend">Client Frontend</option>
                       <option value="backend">Database & APIs</option>
+                      <option value="ai">AI Tools</option>
                       <option value="other">Creative Design</option>
                     </select>
                   </div>
