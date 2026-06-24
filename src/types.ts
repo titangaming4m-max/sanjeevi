@@ -13,7 +13,7 @@ export interface Skill {
   id: string;
   name: string;
   level: number; // 0-100
-  category: 'frontend' | 'backend' | 'other';
+  category: 'frontend' | 'backend' | 'ai' | 'other';
 }
 
 export interface Service {
