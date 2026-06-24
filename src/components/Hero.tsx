@@ -75,9 +75,14 @@ export default function Hero({
     try {
       const res = await fetch('/api/resume/details');
       if (res.ok) {
-        const json = await res.json();
-        if (json.success && json.data) {
-          setResumeDetails(json.data);
+        const contentType = res.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const json = await res.json();
+          if (json.success && json.data) {
+            setResumeDetails(json.data);
+          }
+        } else {
+          console.warn("Expected JSON but received non-JSON for /api/resume/details");
         }
       }
     } catch (err) {
