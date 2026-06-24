@@ -138,24 +138,31 @@ export default function App() {
           'Pragma': 'no-cache'
         }
       });
-      const data = await response.json();
-      if (data && !data.error) {
-        setPortfolio(data);
-        if (data.settings?.themePreset) {
-          setActiveTheme(data.settings.themePreset);
-        }
-        if (data.settings?.artShape) {
-          setArtShape(data.settings.artShape);
-        }
-        if (data.settings?.buttonStyle) {
-          setButtonStyle(data.settings.buttonStyle);
-        }
-        if (data.settings?.customPurple || data.settings?.customBlue || data.settings?.customPink) {
-          setCustomColors({
-            purple: data.settings.customPurple || '#9333ea',
-            blue: data.settings.customBlue || '#3b82f6',
-            pink: data.settings.customPink || '#ec4899',
-          });
+      if (response.ok) {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const data = await response.json();
+          if (data && !data.error) {
+            setPortfolio(data);
+            if (data.settings?.themePreset) {
+              setActiveTheme(data.settings.themePreset);
+            }
+            if (data.settings?.artShape) {
+              setArtShape(data.settings.artShape);
+            }
+            if (data.settings?.buttonStyle) {
+              setButtonStyle(data.settings.buttonStyle);
+            }
+            if (data.settings?.customPurple || data.settings?.customBlue || data.settings?.customPink) {
+              setCustomColors({
+                purple: data.settings.customPurple || '#9333ea',
+                blue: data.settings.customBlue || '#3b82f6',
+                pink: data.settings.customPink || '#ec4899',
+              });
+            }
+          }
+        } else {
+          console.warn("Expected JSON but received non-JSON response for /api/portfolio");
         }
       }
     } catch (err) {
