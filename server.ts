@@ -35,6 +35,30 @@ try {
   console.error('Failed to initialize database on server:', err);
 }
 
+// Robust helper function to generate Gemini content with retry and fallback model
+async function generateGeminiContentWithFallback(ai: any, contents: any, config: any) {
+  // Try gemini-3.1-flash-lite first for ultra-fast response and high reliability, then fallback to gemini-3.5-flash
+  const modelsToTry = ['gemini-3.1-flash-lite', 'gemini-3.5-flash'];
+  let lastError: any = null;
+
+  for (const modelToUse of modelsToTry) {
+    try {
+      console.log(`Attempting generateContent using model: ${modelToUse}...`);
+      const response = await ai.models.generateContent({
+        model: modelToUse,
+        contents,
+        config,
+      });
+      return response;
+    } catch (err: any) {
+      lastError = err;
+      console.warn(`Gemini model ${modelToUse} failed with error: ${err.message}. Trying next available model immediately...`);
+    }
+  }
+
+  throw lastError || new Error("Failed to generate content with Gemini models.");
+}
+
 // In-Memory Backup/Default State in case Firestore is unreachable
 let localBackupData = {
   settings: {
@@ -78,6 +102,8 @@ let localBackupData = {
     { id: "4", name: "Node.js & Express", level: 85, category: "backend" },
     { id: "5", name: "Firebase & Firestore", level: 90, category: "backend" },
     { id: "6", name: "PostgreSQL & SQL", level: 80, category: "backend" },
+    { id: "9", name: "Gemini API & GenAI SDK", level: 90, category: "ai" },
+    { id: "10", name: "Agents & Prompt Eng.", level: 85, category: "ai" },
     { id: "7", name: "UI/UX Design", level: 90, category: "other" },
     { id: "8", name: "SEO & Optimization", level: 85, category: "other" }
   ],
@@ -508,6 +534,8 @@ app.post('/api/admin/reset', verifyAdmin, async (req, res) => {
       { id: "4", name: "Node.js & Express", level: 85, category: "backend" },
       { id: "5", name: "Firebase & Firestore", level: 90, category: "backend" },
       { id: "6", name: "PostgreSQL & SQL", level: 80, category: "backend" },
+      { id: "9", name: "Gemini API & GenAI SDK", level: 90, category: "ai" },
+      { id: "10", name: "Agents & Prompt Eng.", level: 85, category: "ai" },
       { id: "7", name: "UI/UX Design", level: 90, category: "other" },
       { id: "8", name: "SEO & Optimization", level: 85, category: "other" }
     ];
@@ -1152,7 +1180,14 @@ app.post('/api/chat', async (req, res) => {
         }
 
         try {
-          const ai = new GoogleGenAI({ apiKey: fallbackKey });
+          const ai = new GoogleGenAI({
+            apiKey: fallbackKey,
+            httpOptions: {
+              headers: {
+                'User-Agent': 'aistudio-build',
+              }
+            }
+          });
           const contents = [];
           if (history && Array.isArray(history)) {
             for (const h of history) {
@@ -1167,14 +1202,10 @@ app.post('/api/chat', async (req, res) => {
             parts: [{ text: message }]
           });
 
-          const result = await ai.models.generateContent({
-            model: 'gemini-3.5-flash',
-            contents,
-            config: {
-              systemInstruction: systemInstruction + "\n(Context suffix: Due to OpenAI quota limits, process this query perfectly with Google Gemini. Add a polite mini-note at the bottom of your reply explaining that you gracefully routed the response to Gemini for optimum performance.)",
-              maxOutputTokens: 500,
-              temperature: 0.7,
-            }
+          const result = await generateGeminiContentWithFallback(ai, contents, {
+            systemInstruction: systemInstruction + "\n(Context suffix: Due to OpenAI quota limits, process this query perfectly with Google Gemini. Add a polite mini-note at the bottom of your reply explaining that you gracefully routed the response to Gemini for optimum performance.)",
+            maxOutputTokens: 500,
+            temperature: 0.7,
           });
 
           aiTextResponse = result.text || "I processed your request, but the generator returned empty.";
@@ -1189,7 +1220,14 @@ app.post('/api/chat', async (req, res) => {
         return res.json({ response: "Google Gemini API Key is not configured yet. Please supply a valid Gemini token in the Admin Settings panel!" });
       }
 
-      const ai = new GoogleGenAI({ apiKey: apiKeyToUse });
+      const ai = new GoogleGenAI({
+        apiKey: apiKeyToUse,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
 
       const contents = [];
       if (history && Array.isArray(history)) {
@@ -1205,15 +1243,11 @@ app.post('/api/chat', async (req, res) => {
         parts: [{ text: message }]
       });
 
-      // Query Gemini 3.5 Flash for conversational text tasks
-      const result = await ai.models.generateContent({
-        model: 'gemini-3.5-flash',
-        contents,
-        config: {
-          systemInstruction,
-          maxOutputTokens: 500,
-          temperature: 0.7,
-        }
+      // Query Gemini 3.5 Flash / fallback for conversational text tasks
+      const result = await generateGeminiContentWithFallback(ai, contents, {
+        systemInstruction,
+        maxOutputTokens: 500,
+        temperature: 0.7,
       });
 
       aiTextResponse = result.text || "I'm processing that. Let me review and follow up!";
