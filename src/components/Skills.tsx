@@ -18,6 +18,7 @@ export default function Skills({ skills }: SkillsProps) {
 
   const frontendSkills = skills.filter((s) => s.category === 'frontend');
   const backendSkills = skills.filter((s) => s.category === 'backend');
+  const aiSkills = skills.filter((s) => s.category === 'ai');
   const otherSkills = skills.filter((s) => s.category === 'other');
 
   const SkillGroup = ({ title, icon, list }: { title: string; icon: React.ReactNode; list: Skill[] }) => (
@@ -77,8 +78,8 @@ export default function Skills({ skills }: SkillsProps) {
           <div className="h-[2px] w-12 bg-gradient-to-r from-neon-pink to-neon-purple mt-3 rounded-full"></div>
         </div>
 
-        {/* 3 Group Bento Columns */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* 4 Group Bento Columns */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
           <motion.div 
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -96,12 +97,25 @@ export default function Skills({ skills }: SkillsProps) {
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.15 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
           >
             <SkillGroup 
               title="Database & APIs" 
               icon={<Server className="w-5 h-5" />} 
               list={backendSkills} 
+            />
+          </motion.div>
+
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+          >
+            <SkillGroup 
+              title="AI Tools" 
+              icon={<Sparkles className="w-5 h-5" />} 
+              list={aiSkills} 
             />
           </motion.div>
 
